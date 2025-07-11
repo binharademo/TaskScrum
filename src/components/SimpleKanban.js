@@ -75,9 +75,11 @@ const getInitials = (name) => {
 
 const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }) => {
   const [editedTask, setEditedTask] = useState(task);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     setEditedTask(task);
+    setIsEditing(false); // Reset editing mode when task changes
   }, [task]);
 
   if (!task) return null;
@@ -96,8 +98,14 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
     if (editedTask && onTasksUpdate) {
       // Chamar a função de atualização diretamente
       onTasksUpdate(editedTask);
+      setIsEditing(false);
       onClose();
     }
+  };
+
+  const handleCancel = () => {
+    setEditedTask(task); // Reset changes
+    setIsEditing(false);
   };
 
   const handleMoveTask = (newStatus) => {
@@ -112,12 +120,22 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <EditIcon color="primary" />
             <Typography variant="h6">
-              Editar Tarefa #{task.originalId}
+              {isEditing ? 'Editando' : 'Detalhes da'} Tarefa #{task.originalId}
             </Typography>
           </Box>
-          <IconButton onClick={onClose} size="small">
-            <CloseIcon />
-          </IconButton>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Button
+              variant={isEditing ? "contained" : "outlined"}
+              size="small"
+              onClick={() => isEditing ? handleCancel() : setIsEditing(true)}
+              startIcon={<EditIcon />}
+            >
+              {isEditing ? 'Cancelar' : 'Editar'}
+            </Button>
+            <IconButton onClick={onClose} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
         </Box>
       </DialogTitle>
       
@@ -126,15 +144,30 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
           {/* Épico */}
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-              <EpicIcon sx={{ color: getEpicColor(task.epico) }} />
-              <Typography variant="h6" sx={{ color: getEpicColor(task.epico) }}>
-                {task.epico}
-              </Typography>
+              <EpicIcon sx={{ color: getEpicColor(isEditing ? editedTask.epico : task.epico) }} />
+              {isEditing ? (
+                <TextField
+                  select
+                  label="Épico"
+                  value={editedTask.epico || ''}
+                  onChange={(e) => handleFieldChange('epico', e.target.value)}
+                  size="small"
+                  sx={{ minWidth: 200 }}
+                >
+                  {Object.keys(epicColors).map(epic => (
+                    <MenuItem key={epic} value={epic}>{epic}</MenuItem>
+                  ))}
+                </TextField>
+              ) : (
+                <Typography variant="h6" sx={{ color: getEpicColor(task.epico) }}>
+                  {task.epico}
+                </Typography>
+              )}
             </Box>
             <Chip
-              label={task.epico}
+              label={isEditing ? editedTask.epico : task.epico}
               sx={{
-                bgcolor: getEpicColor(task.epico),
+                bgcolor: getEpicColor(isEditing ? editedTask.epico : task.epico),
                 color: 'white',
                 fontWeight: 'bold'
               }}
@@ -146,38 +179,74 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
             <Typography variant="subtitle1" gutterBottom fontWeight="bold">
               História do Usuário
             </Typography>
-            <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
-              <Typography variant="body1">
-                {task.userStory}
-              </Typography>
-            </Paper>
+            {isEditing ? (
+              <TextField
+                fullWidth
+                multiline
+                rows={3}
+                value={editedTask.userStory || ''}
+                onChange={(e) => handleFieldChange('userStory', e.target.value)}
+                variant="outlined"
+                placeholder="Descreva a história do usuário..."
+              />
+            ) : (
+              <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
+                <Typography variant="body1">
+                  {task.userStory}
+                </Typography>
+              </Paper>
+            )}
           </Box>
 
           {/* Atividade */}
-          {task.atividade && (
+          {(task.atividade || isEditing) && (
             <Box>
               <Typography variant="subtitle1" gutterBottom fontWeight="bold">
                 Atividade
               </Typography>
-              <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
-                <Typography variant="body1">
-                  {task.atividade}
-                </Typography>
-              </Paper>
+              {isEditing ? (
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={2}
+                  value={editedTask.atividade || ''}
+                  onChange={(e) => handleFieldChange('atividade', e.target.value)}
+                  variant="outlined"
+                  placeholder="Descreva a atividade..."
+                />
+              ) : (
+                <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
+                  <Typography variant="body1">
+                    {task.atividade}
+                  </Typography>
+                </Paper>
+              )}
             </Box>
           )}
 
           {/* Detalhamento */}
-          {task.detalhamento && (
+          {(task.detalhamento || isEditing) && (
             <Box>
               <Typography variant="subtitle1" gutterBottom fontWeight="bold">
                 Detalhamento
               </Typography>
-              <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
-                <Typography variant="body1">
-                  {task.detalhamento}
-                </Typography>
-              </Paper>
+              {isEditing ? (
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={3}
+                  value={editedTask.detalhamento || ''}
+                  onChange={(e) => handleFieldChange('detalhamento', e.target.value)}
+                  variant="outlined"
+                  placeholder="Adicione detalhes técnicos..."
+                />
+              ) : (
+                <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
+                  <Typography variant="body1">
+                    {task.detalhamento}
+                  </Typography>
+                </Paper>
+              )}
             </Box>
           )}
 
@@ -192,15 +261,30 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
                   <Typography variant="body2" color="text.secondary">
                     Prioridade:
                   </Typography>
-                  <Chip
-                    label={task.prioridade}
-                    size="small"
-                    sx={{
-                      bgcolor: getPriorityColor(task.prioridade),
-                      color: 'white',
-                      fontWeight: 'bold'
-                    }}
-                  />
+                  {isEditing ? (
+                    <FormControl size="small" sx={{ minWidth: 120 }}>
+                      <Select
+                        value={editedTask.prioridade || ''}
+                        onChange={(e) => handleFieldChange('prioridade', e.target.value)}
+                        displayEmpty
+                      >
+                        <MenuItem value="Baixa">Baixa</MenuItem>
+                        <MenuItem value="Média">Média</MenuItem>
+                        <MenuItem value="Alta">Alta</MenuItem>
+                        <MenuItem value="Crítica">Crítica</MenuItem>
+                      </Select>
+                    </FormControl>
+                  ) : (
+                    <Chip
+                      label={task.prioridade}
+                      size="small"
+                      sx={{
+                        bgcolor: getPriorityColor(task.prioridade),
+                        color: 'white',
+                        fontWeight: 'bold'
+                      }}
+                    />
+                  )}
                 </Box>
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -220,12 +304,24 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
                   <Typography variant="body2" color="text.secondary">
                     Desenvolvedor:
                   </Typography>
-                  <Avatar sx={{ width: 20, height: 20, fontSize: '0.7rem' }}>
-                    {getInitials(task.desenvolvedor)}
-                  </Avatar>
-                  <Typography variant="body2">
-                    {task.desenvolvedor}
-                  </Typography>
+                  {isEditing ? (
+                    <TextField
+                      size="small"
+                      value={editedTask.desenvolvedor || ''}
+                      onChange={(e) => handleFieldChange('desenvolvedor', e.target.value)}
+                      sx={{ minWidth: 120 }}
+                      placeholder="Nome do desenvolvedor"
+                    />
+                  ) : (
+                    <>
+                      <Avatar sx={{ width: 20, height: 20, fontSize: '0.7rem' }}>
+                        {getInitials(task.desenvolvedor)}
+                      </Avatar>
+                      <Typography variant="body2">
+                        {task.desenvolvedor}
+                      </Typography>
+                    </>
+                  )}
                 </Box>
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -355,16 +451,18 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
       
       <DialogActions>
         <Button onClick={onClose} color="secondary">
-          Cancelar
+          Fechar
         </Button>
-        <Button 
-          onClick={handleSave} 
-          color="primary" 
-          variant="contained"
-          disabled={!editedTask?.atividade?.trim()}
-        >
-          Salvar
-        </Button>
+        {isEditing && (
+          <Button 
+            onClick={handleSave} 
+            color="primary" 
+            variant="contained"
+            disabled={!editedTask?.userStory?.trim()}
+          >
+            Salvar Alterações
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );
