@@ -1,0 +1,1522 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Button,
+  Chip,
+  IconButton,
+  Tooltip,
+  TableSortLabel,
+  TablePagination,
+  Toolbar,
+  Typography,
+  Snackbar,
+  Alert,
+  Grid,
+  Card,
+  CardContent,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Link,
+  Tabs,
+  Tab,
+  Divider
+} from '@mui/material';
+import {
+  GetApp as ExportIcon,
+  FilterList as FilterIcon,
+  Clear as ClearIcon,
+  Close as CloseIcon
+} from '@mui/icons-material';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip as ChartTooltip,
+  Legend,
+  TimeScale
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+import { format, differenceInDays, addDays, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { exportToExcel } from '../utils/excelImport';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  ChartTooltip,
+  Legend,
+  TimeScale
+);
+
+const priorityColors = {
+  'Alta': '#f44336',
+  'Média': '#ff9800',
+  'Baixa': '#4caf50'
+};
+
+const statusColors = {
+  'Backlog': '#757575',
+  'Priorizado': '#ff9800',
+  'Doing': '#4caf50',
+  'Done': '#9c27b0'
+};
+
+const TableView = ({ tasks, onTasksUpdate }) => {
+  const [sortBy, setSortBy] = useState('originalId');
+  const [sortDirection, setSortDirection] = useState('asc');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [showSaveMessage, setShowSaveMessage] = useState(false);
+  const [selectedSprint, setSelectedSprint] = useState('');
+  const [chartData, setChartData] = useState(null);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    sprint: '',
+    desenvolvedor: '',
+    prioridade: '',
+    status: '',
+    epico: ''
+  });
+  
+  const [teamConfig, setTeamConfig] = useState({
+    developers: 3,
+    hoursPerDay: 8,
+    sprintDays: 10
+  });
+  
+  const [activeTab, setActiveTab] = useState(0);
+
+  const handleSort = (field) => {
+    const isAsc = sortBy === field && sortDirection === 'asc';
+    setSortDirection(isAsc ? 'desc' : 'asc');
+    setSortBy(field);
+  };
+
+  const handleValueChange = (taskId, field, value) => {
+    const updatedTasks = tasks.map(task => {
+      if (task.id === taskId) {
+        const updatedTask = { ...task, [field]: value, updatedAt: new Date().toISOString() };
+        
+        // Se alterou a estimativa inicial, inicializar reestimativas se não existir
+        if (field === 'estimativa') {
+          if (!task.reestimativas || task.reestimativas.length === 0) {
+            updatedTask.reestimativas = Array.from({ length: 10 }, () => value);
+          }
+        }
+        
+        return updatedTask;
+      }
+      return task;
+    });
+    onTasksUpdate(updatedTasks);
+    setShowSaveMessage(true);
+    
+    // Forçar atualização do gráfico se alterou estimativa
+    if (field === 'estimativa' && selectedSprint) {
+      const data = calculateSprintData(selectedSprint);
+      setChartData(data);
+    }
+  };
+
+  const handleReestimativaChange = (taskId, dayIndex, value) => {
+    const updatedTasks = tasks.map(task => {
+      if (task.id === taskId) {
+        // Garantir que existe um array de reestimativas
+        const existingReestimativas = task.reestimativas || Array.from({ length: 10 }, () => task.estimativa || 0);
+        const newReestimativas = [...existingReestimativas];
+        
+        // Garantir que o array tem 10 elementos
+        while (newReestimativas.length < 10) {
+          newReestimativas.push(task.estimativa || 0);
+        }
+        
+        const newValue = parseFloat(value) || 0;
+        
+        // Definir o valor para o dia atual
+        newReestimativas[dayIndex] = newValue;
+        
+        // Replicar o valor para todos os dias subsequentes
+        for (let i = dayIndex + 1; i < 10; i++) {
+          newReestimativas[i] = newValue;
+        }
+        
+        return { 
+          ...task, 
+          reestimativas: newReestimativas, 
+          updatedAt: new Date().toISOString() 
+        };
+      }
+      return task;
+    });
+    onTasksUpdate(updatedTasks);
+    setShowSaveMessage(true);
+    
+    // Forçar atualização do gráfico imediatamente
+    if (selectedSprint) {
+      const data = calculateSprintData(selectedSprint);
+      setChartData(data);
+    }
+  };
+
+  // Garantir que as reestimativas sejam inicializadas corretamente
+  const ensureReestimativas = (task) => {
+    if (!task.reestimativas || task.reestimativas.length < 10) {
+      const newReestimativas = Array.from({ length: 10 }, (_, index) => {
+        if (task.reestimativas && task.reestimativas[index] !== undefined) {
+          return task.reestimativas[index];
+        }
+        return task.estimativa || 0;
+      });
+      
+      return {
+        ...task,
+        reestimativas: newReestimativas
+      };
+    }
+    
+    return task;
+  };
+
+  const handleFilterChange = (field, value) => {
+    setFilters(prev => ({ ...prev, [field]: value }));
+    setPage(0);
+  };
+
+  const clearFilters = () => {
+    setFilters({ sprint: '', desenvolvedor: '', prioridade: '', status: '', epico: '' });
+  };
+
+  const getUniqueValues = (field) => {
+    return [...new Set(tasks.map(task => task[field]).filter(Boolean))];
+  };
+
+  const calculateSprintData = (sprintName) => {
+    const sprintTasks = tasks.filter(task => task.sprint === sprintName);
+    if (sprintTasks.length === 0) return null;
+
+    const totalHours = sprintTasks.reduce((sum, task) => sum + (task.estimativa || 0), 0);
+    const sprintDays = teamConfig.sprintDays;
+    
+    // Capacidade total da equipe por dia
+    const teamCapacityPerDay = teamConfig.developers * teamConfig.hoursPerDay;
+    
+    // Calcular quantos dias são necessários para completar baseado na capacidade
+    const daysNeeded = Math.ceil(totalHours / teamCapacityPerDay);
+    
+    // Usar o maior valor entre dias do sprint configurado e dias necessários
+    const maxDays = Math.max(sprintDays, daysNeeded);
+    
+    const labels = [];
+    const idealLine = [];
+    const actualLine = [];
+    const capacityLine = [];
+
+    for (let i = 0; i <= maxDays; i++) {
+      // Labels como "Dia 0", "Dia 1", etc.
+      labels.push(`Dia ${i}`);
+
+      // Linha ideal - decréscimo linear baseado nos dias do sprint original
+      const idealRemaining = totalHours - (totalHours / sprintDays) * i;
+      idealLine.push(Math.max(0, idealRemaining));
+
+      // Linha real - usar exatamente o mesmo cálculo da tabela
+      if (i === 0) {
+        // Dia 0 = total inicial
+        actualLine.push(totalHours);
+        capacityLine.push(totalHours);
+      } else {
+        const dayIndex = i - 1; // Dia 1 = index 0, Dia 2 = index 1, etc.
+        
+        // Usar exatamente o mesmo cálculo da linha de totais
+        const sprintTotals = calculateColumnTotals(sprintTasks);
+        const totalRemainingHours = dayIndex < sprintTotals.dias.length ? sprintTotals.dias[dayIndex] : 0;
+        actualLine.push(Math.max(0, totalRemainingHours));
+        
+        // Linha de capacidade - decréscimo baseado na capacidade da equipe
+        const capacityRemaining = totalHours - (teamCapacityPerDay * i);
+        capacityLine.push(Math.max(0, capacityRemaining));
+      }
+    }
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Linha Ideal',
+          data: idealLine,
+          borderColor: 'rgb(75, 192, 192)',
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          borderDash: [5, 5],
+          tension: 0.1
+        },
+        {
+          label: 'Reestimativas Reais',
+          data: actualLine,
+          borderColor: 'rgb(255, 99, 132)',
+          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+          tension: 0.1
+        },
+        {
+          label: `Previsão Equipe (${teamConfig.developers} devs × ${teamConfig.hoursPerDay}h = ${teamCapacityPerDay}h/dia)`,
+          data: capacityLine,
+          borderColor: 'rgb(54, 162, 235)',
+          backgroundColor: 'rgba(54, 162, 235, 0.2)',
+          borderDash: [10, 5],
+          tension: 0.1
+        }
+      ],
+      daysNeeded,
+      willOverflow: daysNeeded > sprintDays
+    };
+  };
+
+  const calculatePredictiveAnalysis = (sprintName) => {
+    const sprintTasks = tasks.filter(task => task.sprint === sprintName);
+    if (sprintTasks.length === 0) return null;
+
+    const analysis = {
+      trends: [],
+      overallTrend: 0,
+      riskLevel: 'low',
+      predictedDelivery: null,
+      confidence: 0
+    };
+
+    // Analisar tendência por desenvolvedor
+    const devAnalysis = {};
+    
+    sprintTasks.forEach(task => {
+      const dev = task.desenvolvedor || 'Não atribuído';
+      if (!devAnalysis[dev]) {
+        devAnalysis[dev] = {
+          tasks: [],
+          totalVariation: 0,
+          avgDailyChange: 0,
+          riskScore: 0
+        };
+      }
+      
+      // Calcular variação das reestimativas
+      const reestimativas = task.reestimativas || [];
+      const estimativaInicial = task.estimativa || 0;
+      const variations = [];
+      
+      for (let i = 0; i < reestimativas.length; i++) {
+        const currentValue = reestimativas[i] || estimativaInicial;
+        const previousValue = i === 0 ? estimativaInicial : (reestimativas[i-1] || estimativaInicial);
+        const variation = currentValue - previousValue;
+        variations.push(variation);
+      }
+      
+      // Calcular tendência (regressão linear simples)
+      const n = variations.length;
+      const x = variations.map((_, i) => i + 1);
+      const y = variations;
+      const sumX = x.reduce((a, b) => a + b, 0);
+      const sumY = y.reduce((a, b) => a + b, 0);
+      const sumXY = x.reduce((acc, xi, i) => acc + xi * y[i], 0);
+      const sumX2 = x.reduce((acc, xi) => acc + xi * xi, 0);
+      
+      const slope = n > 1 ? (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX) : 0;
+      const intercept = (sumY - slope * sumX) / n;
+      
+      devAnalysis[dev].tasks.push({
+        id: task.id,
+        atividade: task.atividade,
+        variations,
+        trend: slope,
+        intercept,
+        totalVariation: reestimativas[reestimativas.length - 1] - estimativaInicial
+      });
+      
+      devAnalysis[dev].totalVariation += reestimativas[reestimativas.length - 1] - estimativaInicial;
+      devAnalysis[dev].avgDailyChange += slope;
+    });
+
+    // Calcular análise geral
+    let totalTrendScore = 0;
+    let totalTasks = 0;
+    
+    Object.keys(devAnalysis).forEach(dev => {
+      const devData = devAnalysis[dev];
+      devData.avgDailyChange /= devData.tasks.length;
+      devData.riskScore = Math.abs(devData.avgDailyChange) * devData.tasks.length;
+      
+      analysis.trends.push({
+        desenvolvedor: dev,
+        avgDailyChange: devData.avgDailyChange,
+        totalVariation: devData.totalVariation,
+        riskScore: devData.riskScore,
+        tasksCount: devData.tasks.length
+      });
+      
+      totalTrendScore += devData.avgDailyChange * devData.tasks.length;
+      totalTasks += devData.tasks.length;
+    });
+
+    // Calcular tendência geral
+    analysis.overallTrend = totalTasks > 0 ? totalTrendScore / totalTasks : 0;
+    
+    // Determinar nível de risco
+    if (Math.abs(analysis.overallTrend) < 0.5) {
+      analysis.riskLevel = 'low';
+    } else if (Math.abs(analysis.overallTrend) < 1.5) {
+      analysis.riskLevel = 'medium';
+    } else {
+      analysis.riskLevel = 'high';
+    }
+    
+    // Calcular previsão de entrega
+    const currentTotalHours = sprintTasks.reduce((sum, task) => {
+      const reestimativas = task.reestimativas || [];
+      return sum + (reestimativas[reestimativas.length - 1] || task.estimativa || 0);
+    }, 0);
+    
+    const teamCapacity = teamConfig.developers * teamConfig.hoursPerDay;
+    const daysRemaining = Math.ceil(currentTotalHours / teamCapacity);
+    
+    // Projetar tendência futura
+    const projectedDailyChange = analysis.overallTrend;
+    const projectedTotalHours = currentTotalHours + (projectedDailyChange * teamConfig.sprintDays);
+    const projectedDaysNeeded = Math.ceil(projectedTotalHours / teamCapacity);
+    
+    analysis.predictedDelivery = {
+      currentDaysNeeded: daysRemaining,
+      projectedDaysNeeded,
+      projectedTotalHours,
+      willDeliver: projectedDaysNeeded <= teamConfig.sprintDays ? 'early' : 'late',
+      daysVariation: projectedDaysNeeded - teamConfig.sprintDays
+    };
+    
+    // Calcular confiança baseada na consistência das tendências
+    const trendVariance = analysis.trends.reduce((sum, trend) => {
+      return sum + Math.pow(trend.avgDailyChange - analysis.overallTrend, 2);
+    }, 0) / analysis.trends.length;
+    
+    analysis.confidence = Math.max(0, Math.min(100, 100 - (trendVariance * 20)));
+
+    return analysis;
+  };
+
+  const calculateSprintStats = (sprintName) => {
+    const sprintTasks = tasks.filter(task => task.sprint === sprintName);
+    if (sprintTasks.length === 0) return {};
+
+    const totalTasks = sprintTasks.length;
+    const completedTasks = sprintTasks.filter(task => task.status === 'Done').length;
+    const totalHours = sprintTasks.reduce((sum, task) => sum + task.estimativa, 0);
+    const completedHours = sprintTasks
+      .filter(task => task.status === 'Done')
+      .reduce((sum, task) => sum + task.estimativa, 0);
+    const hoursWorked = sprintTasks.reduce((sum, task) => sum + task.horasMedidas, 0);
+    const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+
+    // Cálculos de previsão de desenvolvedores
+    const sprintDays = teamConfig.sprintDays;
+    const hoursPerDay = teamConfig.hoursPerDay;
+    const totalCapacityNeeded = totalHours;
+    const totalCapacityAvailable = sprintDays * hoursPerDay;
+    
+    // Quantos devs são necessários para cumprir o prazo
+    const devsNeeded = Math.ceil(totalCapacityNeeded / totalCapacityAvailable);
+    
+    // Cenários alternativos
+    const scenarios = [
+      { hours: 4, devs: Math.ceil(totalCapacityNeeded / (sprintDays * 4)) },
+      { hours: 6, devs: Math.ceil(totalCapacityNeeded / (sprintDays * 6)) },
+      { hours: 8, devs: Math.ceil(totalCapacityNeeded / (sprintDays * 8)) }
+    ];
+
+    return {
+      totalTasks,
+      completedTasks,
+      totalHours,
+      completedHours,
+      hoursWorked,
+      completionRate,
+      devsNeeded,
+      scenarios
+    };
+  };
+
+  useEffect(() => {
+    if (selectedSprint) {
+      const data = calculateSprintData(selectedSprint);
+      setChartData(data);
+    }
+  }, [selectedSprint, tasks, teamConfig]);
+
+  useEffect(() => {
+    const sprints = getUniqueValues('sprint');
+    if (sprints.length > 0 && !selectedSprint) {
+      setSelectedSprint(sprints[0]);
+    }
+  }, [tasks]);
+
+  const getFilteredAndSortedTasks = () => {
+    let filtered = tasks;
+    
+    Object.keys(filters).forEach(key => {
+      if (filters[key]) {
+        filtered = filtered.filter(task => task[key] === filters[key]);
+      }
+    });
+    
+    return filtered.sort((a, b) => {
+      let aValue = a[sortBy];
+      let bValue = b[sortBy];
+      
+      if (typeof aValue === 'string') {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      }
+      
+      if (sortDirection === 'asc') {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
+  };
+
+  const filteredTasks = getFilteredAndSortedTasks();
+  
+  // Calcular somatórios por coluna
+  const calculateColumnTotals = () => {
+    const totals = {
+      estimativa: 0,
+      dias: Array.from({ length: 10 }, () => 0)
+    };
+    
+    filteredTasks.forEach(task => {
+      const taskWithReestimativas = ensureReestimativas(task);
+      totals.estimativa += task.estimativa || 0;
+      
+      for (let i = 0; i < 10; i++) {
+        const dayValue = i === 0 
+          ? task.estimativa || 0 
+          : (taskWithReestimativas.reestimativas[i] || 0);
+        totals.dias[i] += dayValue;
+      }
+    });
+    
+    return totals;
+  };
+
+  const columnTotals = calculateColumnTotals();
+  const paginatedTasks = filteredTasks.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const handleExport = () => {
+    exportToExcel(filteredTasks);
+  };
+
+  const handleTaskClick = (task) => {
+    setSelectedTask(task);
+    setDetailsOpen(true);
+  };
+
+  const handleCloseDetails = () => {
+    setDetailsOpen(false);
+    setSelectedTask(null);
+  };
+
+  const handleTaskUpdate = (field, value) => {
+    if (selectedTask) {
+      setSelectedTask({ ...selectedTask, [field]: value });
+    }
+  };
+
+  const handleSaveTask = () => {
+    if (selectedTask) {
+      const updatedTasks = tasks.map(task => 
+        task.id === selectedTask.id 
+          ? { ...selectedTask, updatedAt: new Date().toISOString() }
+          : task
+      );
+      onTasksUpdate(updatedTasks);
+      setShowSaveMessage(true);
+      setDetailsOpen(false);
+    }
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      title: {
+        display: true,
+        text: `Burndown Chart - Sprint ${selectedSprint}`
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            const value = context.parsed && context.parsed.y ? context.parsed.y : 0;
+            return `${context.dataset.label}: ${Number(value).toFixed(1)}h`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: 'Dias do Sprint'
+        }
+      },
+      y: {
+        title: {
+          display: true,
+          text: 'Horas Restantes'
+        },
+        beginAtZero: true
+      }
+    }
+  };
+
+  const EditableCell = ({ task, field, type = 'text', options = [] }) => {
+    const value = task[field];
+    
+    if (type === 'select') {
+      return (
+        <FormControl size="small" sx={{ minWidth: 120 }}>
+          <Select
+            value={value}
+            onChange={(e) => handleValueChange(task.id, field, e.target.value)}
+            variant="standard"
+          >
+            {options.map(option => (
+              <MenuItem key={option} value={option}>{option}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      );
+    }
+    
+    if (field === 'prioridade') {
+      return (
+        <FormControl size="small" sx={{ minWidth: 100 }}>
+          <Select
+            value={value}
+            onChange={(e) => handleValueChange(task.id, field, e.target.value)}
+            variant="standard"
+            renderValue={(selected) => (
+              <Chip
+                label={selected}
+                size="small"
+                sx={{
+                  bgcolor: priorityColors[selected],
+                  color: 'white',
+                  height: 20
+                }}
+              />
+            )}
+          >
+            {['Alta', 'Média', 'Baixa'].map(priority => (
+              <MenuItem key={priority} value={priority}>
+                <Chip
+                  label={priority}
+                  size="small"
+                  sx={{
+                    bgcolor: priorityColors[priority],
+                    color: 'white'
+                  }}
+                />
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      );
+    }
+    
+    if (field === 'status') {
+      return (
+        <FormControl size="small" sx={{ minWidth: 100 }}>
+          <Select
+            value={value}
+            onChange={(e) => handleValueChange(task.id, field, e.target.value)}
+            variant="standard"
+            renderValue={(selected) => (
+              <Chip
+                label={selected}
+                size="small"
+                sx={{
+                  bgcolor: statusColors[selected],
+                  color: 'white',
+                  height: 20
+                }}
+              />
+            )}
+          >
+            {['Backlog', 'Priorizado', 'Doing', 'Done'].map(status => (
+              <MenuItem key={status} value={status}>
+                <Chip
+                  label={status}
+                  size="small"
+                  sx={{
+                    bgcolor: statusColors[status],
+                    color: 'white'
+                  }}
+                />
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      );
+    }
+    
+    return (
+      <TextField
+        size="small"
+        type={type}
+        value={value}
+        onChange={(e) => handleValueChange(task.id, field, e.target.value)}
+        variant="standard"
+        sx={{ minWidth: 100 }}
+        fullWidth
+      />
+    );
+  };
+
+  const ReestimativaCell = ({ task, dayIndex }) => {
+    const value = task.reestimativas[dayIndex];
+    
+    // Verificar se este valor é igual ao valor do dia anterior (indicando replicação)
+    const isReplicated = dayIndex > 0 && task.reestimativas[dayIndex] === task.reestimativas[dayIndex - 1];
+    
+    return (
+      <TextField
+        size="small"
+        type="number"
+        value={value || 0}
+        onChange={(e) => handleReestimativaChange(task.id, dayIndex, e.target.value)}
+        variant="standard"
+        sx={{ 
+          width: 70,
+          '& .MuiInputBase-input': {
+            backgroundColor: isReplicated ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+            borderRadius: '4px'
+          }
+        }}
+        inputProps={{ 
+          min: 0, 
+          step: 0.5,
+          style: { textAlign: 'center' }
+        }}
+        title={isReplicated ? 'Valor replicado do dia anterior' : 'Valor original'}
+      />
+    );
+  };
+
+  const sprintStats = calculateSprintStats(selectedSprint);
+  const predictiveAnalysis = calculatePredictiveAnalysis(selectedSprint);
+
+  return (
+    <Box>
+      <Toolbar>
+        <Typography variant="h6" sx={{ flexGrow: 1 }}>
+          Tarefas ({filteredTasks.length})
+        </Typography>
+        <Button
+          startIcon={<ExportIcon />}
+          onClick={handleExport}
+          variant="outlined"
+          size="small"
+        >
+          Exportar
+        </Button>
+      </Toolbar>
+
+      {/* Abas Principais */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)} sx={{ mb: 3 }}>
+            <Tab label="📈 Burndown Chart" />
+            <Tab label="📊 Estatísticas" />
+            <Tab label="🔮 Análise Preditiva" />
+          </Tabs>
+          
+          {/* Aba 1: Burndown Chart */}
+          {activeTab === 0 && (
+            <Box>
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">
+                  Burndown Chart
+                </Typography>
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                  <Select
+                    value={selectedSprint}
+                    onChange={(e) => setSelectedSprint(e.target.value)}
+                    displayEmpty
+                  >
+                    <MenuItem value="">Selecione um Sprint</MenuItem>
+                    {getUniqueValues('sprint').map(sprint => (
+                      <MenuItem key={sprint} value={sprint}>{sprint}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+              
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2, flexWrap: 'wrap' }}>
+                <Typography variant="body2" color="text.secondary">
+                  Configuração:
+                </Typography>
+                <TextField
+                  label="Desenvolvedores"
+                  type="number"
+                  size="small"
+                  value={teamConfig.developers}
+                  onChange={(e) => setTeamConfig({...teamConfig, developers: parseInt(e.target.value) || 1})}
+                  sx={{ width: 120 }}
+                  inputProps={{ min: 1, max: 20 }}
+                />
+                <TextField
+                  label="Horas/dia"
+                  type="number"
+                  size="small"
+                  value={teamConfig.hoursPerDay}
+                  onChange={(e) => setTeamConfig({...teamConfig, hoursPerDay: parseInt(e.target.value) || 1})}
+                  sx={{ width: 100 }}
+                  inputProps={{ min: 1, max: 24 }}
+                />
+                <TextField
+                  label="Dias Sprint"
+                  type="number"
+                  size="small"
+                  value={teamConfig.sprintDays}
+                  onChange={(e) => setTeamConfig({...teamConfig, sprintDays: parseInt(e.target.value) || 1})}
+                  sx={{ width: 100 }}
+                  inputProps={{ min: 1, max: 50 }}
+                />
+                <Typography variant="body2" color="primary">
+                  Capacidade: {teamConfig.developers * teamConfig.hoursPerDay}h/dia
+                </Typography>
+              </Box>
+              
+              <Box sx={{ height: 400 }}>
+                {chartData && selectedSprint ? (
+                  <Line data={chartData} options={chartOptions} />
+                ) : (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                    <Typography color="text.secondary">
+                      Selecione um sprint para visualizar o burndown
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            </Box>
+          )}
+          
+          {/* Aba 2: Estatísticas */}
+          {activeTab === 1 && (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Estatísticas do Sprint
+              </Typography>
+              
+              {selectedSprint && sprintStats.totalTasks > 0 ? (
+                <Grid container spacing={3}>
+                  <Grid item xs={12} md={4}>
+                    {/* Informações Básicas */}
+                    <Card variant="outlined" sx={{ p: 2, bgcolor: 'grey.50', mb: 2 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: 'primary.main' }}>
+                        📋 Informações Gerais
+                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">Sprint</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{selectedSprint}</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" color="text.secondary">Progresso</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                          {sprintStats.completionRate.toFixed(1)}%
+                        </Typography>
+                      </Box>
+                    </Card>
+                    
+                    {/* Tarefas */}
+                    <Card variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: 'primary.main' }}>
+                        ✅ Tarefas
+                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">Total</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{sprintStats.totalTasks}</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" color="text.secondary">Concluídas</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                          {sprintStats.completedTasks}
+                        </Typography>
+                      </Box>
+                    </Card>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={4}>
+                    {/* Horas */}
+                    <Card variant="outlined" sx={{ p: 2, bgcolor: 'grey.50', mb: 2 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: 'primary.main' }}>
+                        ⏱️ Horas
+                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">Estimadas</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{sprintStats.totalHours}h</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">Concluídas</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                          {sprintStats.completedHours}h
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" color="text.secondary">Trabalhadas</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'info.main' }}>
+                          {sprintStats.hoursWorked}h
+                        </Typography>
+                      </Box>
+                    </Card>
+                    
+                    {/* Previsão de Desenvolvedores */}
+                    {sprintStats.devsNeeded && (
+                      <Card variant="outlined" sx={{ p: 2, bgcolor: 'info.light', borderColor: 'info.main' }}>
+                        <Typography variant="subtitle2" sx={{ color: 'info.dark', fontWeight: 'bold', mb: 1 }}>
+                          👥 PREVISÃO DE DESENVOLVEDORES
+                        </Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                          <Typography variant="body2" color="text.secondary">Para {teamConfig.sprintDays} dias</Typography>
+                          <Typography variant="body2" sx={{ color: 'info.dark', fontWeight: 'bold' }}>
+                            {sprintStats.devsNeeded} dev{sprintStats.devsNeeded > 1 ? 's' : ''}
+                          </Typography>
+                        </Box>
+                        <Divider sx={{ my: 1 }} />
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.75rem' }}>
+                          Outros cenários:
+                        </Typography>
+                        {sprintStats.scenarios && sprintStats.scenarios.map((scenario, index) => (
+                          <Box key={index} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                              {scenario.hours}h/dia
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                              {scenario.devs} dev{scenario.devs > 1 ? 's' : ''}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Card>
+                    )}
+                  </Grid>
+                  
+                  <Grid item xs={12} md={4}>
+                    {/* Status do Prazo */}
+                    {chartData && chartData.daysNeeded && (
+                      <Card variant="outlined" sx={{ 
+                        p: 2, 
+                        bgcolor: chartData.willOverflow ? 'error.light' : 'success.light',
+                        borderColor: chartData.willOverflow ? 'error.main' : 'success.main'
+                      }}>
+                        <Typography variant="subtitle2" sx={{ 
+                          color: chartData.willOverflow ? 'error.dark' : 'success.dark',
+                          fontWeight: 'bold',
+                          mb: 1
+                        }}>
+                          {chartData.willOverflow ? '⚠️ PRAZO ESTOURADO' : '✅ PRAZO OK'}
+                        </Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                          <Typography variant="body2" color="text.secondary">Dias necessários</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{chartData.daysNeeded}</Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2" color="text.secondary">Dias do sprint</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{teamConfig.sprintDays}</Typography>
+                        </Box>
+                        {chartData.willOverflow && (
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                            <Typography variant="body2" color="text.secondary">Excesso</Typography>
+                            <Typography variant="body2" sx={{ color: 'error.dark', fontWeight: 'bold' }}>
+                              +{chartData.daysNeeded - teamConfig.sprintDays} dias
+                            </Typography>
+                          </Box>
+                        )}
+                      </Card>
+                    )}
+                  </Grid>
+                </Grid>
+              ) : (
+                <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                  Selecione um sprint para ver as estatísticas
+                </Typography>
+              )}
+            </Box>
+          )}
+          
+          {/* Aba 3: Análise Preditiva */}
+          {activeTab === 2 && (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Análise Preditiva
+              </Typography>
+              
+              {selectedSprint && predictiveAnalysis ? (
+                <Grid container spacing={3}>
+                  <Grid item xs={12} md={6}>
+                    {/* Previsão Principal */}
+                    <Card variant="outlined" sx={{ 
+                      p: 2, 
+                      bgcolor: predictiveAnalysis.predictedDelivery?.willDeliver === 'early' ? 'success.light' : 'warning.light',
+                      borderColor: predictiveAnalysis.predictedDelivery?.willDeliver === 'early' ? 'success.main' : 'warning.main',
+                      mb: 2
+                    }}>
+                      <Typography variant="subtitle2" sx={{ 
+                        color: predictiveAnalysis.predictedDelivery?.willDeliver === 'early' ? 'success.dark' : 'warning.dark',
+                        fontWeight: 'bold',
+                        mb: 1
+                      }}>
+                        {predictiveAnalysis.predictedDelivery?.willDeliver === 'early' ? 
+                          '🚀 PROJETO DENTRO DO PRAZO' : 
+                          '⏰ PROJETO PODE ATRASAR'}
+                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">Tendência</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                          {predictiveAnalysis.overallTrend > 0 ? '+' : ''}{predictiveAnalysis.overallTrend.toFixed(2)}h/dia
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">Previsão</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                          {predictiveAnalysis.predictedDelivery?.projectedDaysNeeded} dias
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" color="text.secondary">Confiança</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                          {predictiveAnalysis.confidence.toFixed(0)}%
+                        </Typography>
+                      </Box>
+                    </Card>
+                    
+                    {/* Nível de Risco */}
+                    <Card variant="outlined" sx={{ 
+                      p: 2, 
+                      bgcolor: predictiveAnalysis.riskLevel === 'high' ? 'error.light' : 
+                               predictiveAnalysis.riskLevel === 'medium' ? 'warning.light' : 'success.light',
+                      borderColor: predictiveAnalysis.riskLevel === 'high' ? 'error.main' : 
+                                  predictiveAnalysis.riskLevel === 'medium' ? 'warning.main' : 'success.main'
+                    }}>
+                      <Typography variant="subtitle2" sx={{ 
+                        color: predictiveAnalysis.riskLevel === 'high' ? 'error.dark' : 
+                               predictiveAnalysis.riskLevel === 'medium' ? 'warning.dark' : 'success.dark',
+                        fontWeight: 'bold',
+                        mb: 1
+                      }}>
+                        Risco: {predictiveAnalysis.riskLevel === 'high' ? 'ALTO 🔴' : 
+                                predictiveAnalysis.riskLevel === 'medium' ? 'MÉDIO 🟡' : 'BAIXO 🟢'}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {predictiveAnalysis.riskLevel === 'high' ? 'Variações significativas detectadas' : 
+                         predictiveAnalysis.riskLevel === 'medium' ? 'Algumas variações observadas' : 'Estimativas estáveis'}
+                      </Typography>
+                    </Card>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    {/* Análise por Desenvolvedor */}
+                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: 'primary.main' }}>
+                      👨‍💻 Análise por Desenvolvedor
+                    </Typography>
+                    {predictiveAnalysis.trends.map((trend, index) => (
+                      <Card key={index} variant="outlined" sx={{ 
+                        p: 1.5, 
+                        mb: 1,
+                        bgcolor: Math.abs(trend.avgDailyChange) > 1 ? 'error.light' : 'grey.50',
+                        borderColor: Math.abs(trend.avgDailyChange) > 1 ? 'error.main' : 'grey.300'
+                      }}>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                          {trend.desenvolvedor}
+                        </Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                            Variação média
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>
+                            {trend.avgDailyChange > 0 ? '+' : ''}{trend.avgDailyChange.toFixed(2)}h/dia
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                            {trend.tasksCount} tarefa{trend.tasksCount > 1 ? 's' : ''}
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>
+                            {trend.totalVariation > 0 ? '+' : ''}{trend.totalVariation.toFixed(1)}h total
+                          </Typography>
+                        </Box>
+                      </Card>
+                    ))}
+                  </Grid>
+                </Grid>
+              ) : (
+                <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                  Selecione um sprint para ver a análise preditiva
+                </Typography>
+              )}
+            </Box>
+          )}
+        </CardContent>
+      </Card>
+      
+      
+      <Box sx={{ mb: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', mb: 1 }}>
+          <FilterIcon />
+          <TextField
+            select
+            label="Épico"
+            value={filters.epico}
+            onChange={(e) => handleFilterChange('epico', e.target.value)}
+            size="small"
+            sx={{ minWidth: 140 }}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            {getUniqueValues('epico').map(epico => (
+              <MenuItem key={epico} value={epico}>{epico}</MenuItem>
+            ))}
+          </TextField>
+          
+          <TextField
+            select
+            label="Sprint"
+            value={filters.sprint}
+            onChange={(e) => handleFilterChange('sprint', e.target.value)}
+            size="small"
+            sx={{ minWidth: 120 }}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            {getUniqueValues('sprint').map(sprint => (
+              <MenuItem key={sprint} value={sprint}>{sprint}</MenuItem>
+            ))}
+          </TextField>
+          
+          <TextField
+            select
+            label="Desenvolvedor"
+            value={filters.desenvolvedor}
+            onChange={(e) => handleFilterChange('desenvolvedor', e.target.value)}
+            size="small"
+            sx={{ minWidth: 150 }}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            {getUniqueValues('desenvolvedor').map(dev => (
+              <MenuItem key={dev} value={dev}>{dev}</MenuItem>
+            ))}
+          </TextField>
+          
+          <TextField
+            select
+            label="Status"
+            value={filters.status}
+            onChange={(e) => handleFilterChange('status', e.target.value)}
+            size="small"
+            sx={{ minWidth: 120 }}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            {getUniqueValues('status').map(status => (
+              <MenuItem key={status} value={status}>{status}</MenuItem>
+            ))}
+          </TextField>
+          
+          <IconButton onClick={clearFilters} size="small">
+            <ClearIcon />
+          </IconButton>
+        </Box>
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+          💡 Dica: Ao alterar um dia, o valor será automaticamente replicado para todos os dias subsequentes. 
+          Campos com fundo azul claro indicam valores replicados.
+        </Typography>
+      </Box>
+
+      <TableContainer component={Paper} sx={{ width: '100%', overflowX: 'auto' }}>
+        <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
+          <TableHead>
+            <TableRow>
+              <TableCell sx={{ width: '30%', minWidth: 200 }}>
+                <TableSortLabel
+                  active={sortBy === 'atividade'}
+                  direction={sortBy === 'atividade' ? sortDirection : 'asc'}
+                  onClick={() => handleSort('atividade')}
+                >
+                  Atividade
+                </TableSortLabel>
+              </TableCell>
+              <TableCell sx={{ width: '8%', textAlign: 'center', minWidth: 80 }}>
+                <TableSortLabel
+                  active={sortBy === 'estimativa'}
+                  direction={sortBy === 'estimativa' ? sortDirection : 'asc'}
+                  onClick={() => handleSort('estimativa')}
+                >
+                  Est. Inicial
+                </TableSortLabel>
+              </TableCell>
+              {Array.from({ length: 10 }, (_, i) => (
+                <TableCell key={i} sx={{ width: '6.2%', textAlign: 'center', minWidth: 65, fontSize: '0.75rem' }}>
+                  Dia {i + 1}
+                </TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {/* Linha de somatórios */}
+            <TableRow sx={{ backgroundColor: 'rgba(0, 0, 0, 0.04)', fontWeight: 'bold' }}>
+              <TableCell sx={{ fontWeight: 'bold', fontSize: '0.875rem' }}>TOTAL</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '0.875rem' }}>
+                {columnTotals.estimativa.toFixed(1)}h
+              </TableCell>
+              {Array.from({ length: 10 }, (_, i) => (
+                <TableCell key={i} sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '0.875rem', padding: '8px 2px' }}>
+                  {columnTotals.dias[i].toFixed(1)}h
+                </TableCell>
+              ))}
+            </TableRow>
+            {paginatedTasks.map((task) => (
+              <TableRow key={task.id} hover>
+                <TableCell sx={{ padding: '8px 12px' }}>
+                  <Link 
+                    component="button" 
+                    variant="body2" 
+                    onClick={() => handleTaskClick(task)}
+                    sx={{ 
+                      textAlign: 'left',
+                      textDecoration: 'none',
+                      '&:hover': {
+                        textDecoration: 'underline'
+                      }
+                    }}
+                    sx={{ 
+                      textAlign: 'left',
+                      textDecoration: 'none',
+                      fontSize: '0.875rem',
+                      lineHeight: 1.2,
+                      display: 'block',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      maxWidth: '100%',
+                      '&:hover': {
+                        textDecoration: 'underline'
+                      }
+                    }}
+                  >
+                    {task.atividade || 'Sem atividade'}
+                  </Link>
+                </TableCell>
+                <TableCell sx={{ padding: '8px 4px' }}>
+                  <TextField
+                    size="small"
+                    type="number"
+                    value={task.estimativa || 0}
+                    onChange={(e) => handleValueChange(task.id, 'estimativa', parseFloat(e.target.value) || 0)}
+                    onFocus={(e) => e.target.select()}
+                    variant="standard"
+                    sx={{ 
+                      width: '100%',
+                      '& .MuiInputBase-input': {
+                        textAlign: 'center',
+                        fontSize: '0.75rem',
+                        padding: '2px 4px'
+                      }
+                    }}
+                    InputProps={{
+                      disableUnderline: false,
+                      sx: {
+                        '& input[type=number]': {
+                          '-moz-appearance': 'textfield'
+                        },
+                        '& input[type=number]::-webkit-outer-spin-button': {
+                          '-webkit-appearance': 'none',
+                          margin: 0
+                        },
+                        '& input[type=number]::-webkit-inner-spin-button': {
+                          '-webkit-appearance': 'none',
+                          margin: 0
+                        }
+                      }
+                    }}
+                    inputProps={{ 
+                      min: 0, 
+                      step: 0.5,
+                      style: { textAlign: 'center' }
+                    }}
+                  />
+                </TableCell>
+                {Array.from({ length: 10 }, (_, i) => {
+                  const taskWithReestimativas = ensureReestimativas(task);
+                  // Usar o valor das reestimativas para todos os dias
+                  const currentValue = taskWithReestimativas.reestimativas && taskWithReestimativas.reestimativas[i] !== undefined 
+                    ? taskWithReestimativas.reestimativas[i] 
+                    : task.estimativa || 0;
+                  
+                  return (
+                    <TableCell key={i} sx={{ textAlign: 'center', padding: '8px 2px' }}>
+                      <TextField
+                        size="small"
+                        type="number"
+                        value={currentValue}
+                        onChange={(e) => handleReestimativaChange(task.id, i, e.target.value)}
+                        onFocus={(e) => e.target.select()}
+                        variant="standard"
+                        sx={{ 
+                          width: '100%',
+                          '& .MuiInputBase-input': {
+                            backgroundColor: i > 0 && taskWithReestimativas.reestimativas[i] === taskWithReestimativas.reestimativas[i - 1] ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+                            borderRadius: '4px',
+                            textAlign: 'center',
+                            fontSize: '0.75rem',
+                            padding: '2px 4px',
+                            transition: 'background-color 0.2s ease'
+                          },
+                          '& .MuiInputBase-input:focus': {
+                            backgroundColor: 'rgba(25, 118, 210, 0.12)'
+                          }
+                        }}
+                        InputProps={{
+                          disableUnderline: false,
+                          sx: {
+                            '& input[type=number]': {
+                              '-moz-appearance': 'textfield'
+                            },
+                            '& input[type=number]::-webkit-outer-spin-button': {
+                              '-webkit-appearance': 'none',
+                              margin: 0
+                            },
+                            '& input[type=number]::-webkit-inner-spin-button': {
+                              '-webkit-appearance': 'none',
+                              margin: 0
+                            }
+                          }
+                        }}
+                        inputProps={{ 
+                          min: 0, 
+                          step: 0.5,
+                          style: { textAlign: 'center' }
+                        }}
+                        title={`Alterar este valor replica para os dias seguintes`}
+                      />
+                    </TableCell>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+      
+      <TablePagination
+        component="div"
+        count={filteredTasks.length}
+        page={page}
+        onPageChange={handleChangePage}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+        labelRowsPerPage="Itens por página:"
+        labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+      />
+      
+      <Snackbar
+        open={showSaveMessage}
+        autoHideDuration={2000}
+        onClose={() => setShowSaveMessage(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={() => setShowSaveMessage(false)} 
+          severity="success" 
+          sx={{ width: '100%' }}
+        >
+          Dados salvos e replicados para dias subsequentes!
+        </Alert>
+      </Snackbar>
+
+      {/* Modal de Detalhes */}
+      <Dialog 
+        open={detailsOpen} 
+        onClose={handleCloseDetails} 
+        maxWidth="md" 
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6">
+              Editar Tarefa #{selectedTask?.originalId}
+            </Typography>
+            <IconButton onClick={handleCloseDetails}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {selectedTask && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 2 }}>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Épico"
+                    value={selectedTask.epico || ''}
+                    onChange={(e) => handleTaskUpdate('epico', e.target.value)}
+                    fullWidth
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Sprint"
+                    value={selectedTask.sprint || ''}
+                    onChange={(e) => handleTaskUpdate('sprint', e.target.value)}
+                    fullWidth
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="User Story"
+                    value={selectedTask.userStory || ''}
+                    onChange={(e) => handleTaskUpdate('userStory', e.target.value)}
+                    fullWidth
+                    multiline
+                    rows={2}
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Atividade"
+                    value={selectedTask.atividade || ''}
+                    onChange={(e) => handleTaskUpdate('atividade', e.target.value)}
+                    fullWidth
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Detalhamento"
+                    value={selectedTask.detalhamento || ''}
+                    onChange={(e) => handleTaskUpdate('detalhamento', e.target.value)}
+                    fullWidth
+                    multiline
+                    rows={3}
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Desenvolvedor"
+                    value={selectedTask.desenvolvedor || ''}
+                    onChange={(e) => handleTaskUpdate('desenvolvedor', e.target.value)}
+                    fullWidth
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth variant="outlined">
+                    <InputLabel>Status</InputLabel>
+                    <Select
+                      value={selectedTask.status || ''}
+                      onChange={(e) => handleTaskUpdate('status', e.target.value)}
+                      label="Status"
+                    >
+                      <MenuItem value="Backlog">Backlog</MenuItem>
+                      <MenuItem value="Priorizado">Priorizado</MenuItem>
+                      <MenuItem value="Doing">Doing</MenuItem>
+                      <MenuItem value="Done">Done</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth variant="outlined">
+                    <InputLabel>Prioridade</InputLabel>
+                    <Select
+                      value={selectedTask.prioridade || ''}
+                      onChange={(e) => handleTaskUpdate('prioridade', e.target.value)}
+                      label="Prioridade"
+                    >
+                      <MenuItem value="Alta">Alta</MenuItem>
+                      <MenuItem value="Média">Média</MenuItem>
+                      <MenuItem value="Baixa">Baixa</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Estimativa (horas)"
+                    type="number"
+                    value={selectedTask.estimativa || 0}
+                    onChange={(e) => handleTaskUpdate('estimativa', parseFloat(e.target.value) || 0)}
+                    fullWidth
+                    variant="outlined"
+                    inputProps={{ min: 0, step: 0.5 }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Observações"
+                    value={selectedTask.observacoes || ''}
+                    onChange={(e) => handleTaskUpdate('observacoes', e.target.value)}
+                    fullWidth
+                    multiline
+                    rows={2}
+                    variant="outlined"
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDetails} color="secondary">
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleSaveTask} 
+            color="primary" 
+            variant="contained"
+            disabled={!selectedTask?.atividade?.trim()}
+          >
+            Salvar
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+};
+
+export default TableView;
