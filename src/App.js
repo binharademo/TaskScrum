@@ -14,6 +14,7 @@ import {
   Dashboard as DashboardIcon, 
   TableChart as TableIcon,
   Analytics as AnalyticsIcon,
+  Speed as SpeedIcon,
   Upload as UploadIcon,
   Brightness4,
   Brightness7
@@ -23,6 +24,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import SimpleKanban from './components/SimpleKanban';
 import TableView from './components/TableView';
 import BurndownChart from './components/BurndownChart';
+import WIPControl from './components/WIPControl';
 import { loadTasksFromStorage, saveTasksToStorage } from './utils/storage';
 import { importExcelFile } from './utils/excelImport';
 import { loadSampleData } from './utils/sampleData';
@@ -88,8 +90,15 @@ function App() {
   };
 
   const handleTasksUpdate = (updatedTasks) => {
-    setTasks(updatedTasks);
-    saveTasksToStorage(updatedTasks);
+    // Garantir que todas as tarefas tenham timestamps
+    const tasksWithTimestamps = updatedTasks.map(task => ({
+      ...task,
+      updatedAt: task.updatedAt || new Date().toISOString(),
+      createdAt: task.createdAt || new Date().toISOString()
+    }));
+    
+    setTasks(tasksWithTimestamps);
+    saveTasksToStorage(tasksWithTimestamps);
   };
 
   const handleFileUpload = async (event) => {
@@ -173,6 +182,11 @@ function App() {
                 label="Burndown" 
                 iconPosition="start"
               />
+              <Tab 
+                icon={<SpeedIcon />} 
+                label="WIP" 
+                iconPosition="start"
+              />
             </Tabs>
           </Box>
           
@@ -186,6 +200,10 @@ function App() {
           
           <TabPanel value={currentTab} index={2}>
             <BurndownChart tasks={tasks} />
+          </TabPanel>
+          
+          <TabPanel value={currentTab} index={3}>
+            <WIPControl tasks={tasks} onTasksUpdate={handleTasksUpdate} />
           </TabPanel>
         </Container>
       </Box>

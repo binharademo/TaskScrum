@@ -868,7 +868,26 @@ const SimpleKanban = ({ tasks, onTasksUpdate }) => {
   const handleStatusChange = (taskId, newStatus) => {
     const updatedTasks = tasks.map(task => {
       if (task.id === taskId) {
-        return { ...task, status: newStatus, updatedAt: new Date().toISOString() };
+        const now = new Date().toISOString();
+        const updatedTask = { 
+          ...task, 
+          status: newStatus, 
+          updatedAt: now,
+          statusChangedAt: now
+        };
+        
+        // Adicionar movimento ao histórico
+        if (!updatedTask.movements) {
+          updatedTask.movements = [];
+        }
+        updatedTask.movements.push({
+          timestamp: now,
+          from: task.status,
+          to: newStatus,
+          userId: 'user' // Em um app real, seria o ID do usuário logado
+        });
+        
+        return updatedTask;
       }
       return task;
     });
