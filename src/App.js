@@ -15,6 +15,7 @@ import {
   TableChart as TableIcon,
   Analytics as AnalyticsIcon,
   Speed as SpeedIcon,
+  Psychology as PsychologyIcon,
   Upload as UploadIcon,
   Brightness4,
   Brightness7
@@ -25,6 +26,7 @@ import SimpleKanban from './components/SimpleKanban';
 import TableView from './components/TableView';
 import BurndownChart from './components/BurndownChart';
 import WIPControl from './components/WIPControl';
+import PredictiveAnalysis from './components/PredictiveAnalysis';
 import { loadTasksFromStorage, saveTasksToStorage } from './utils/storage';
 import { importExcelFile } from './utils/excelImport';
 import { loadSampleData } from './utils/sampleData';
@@ -187,6 +189,11 @@ function App() {
                 label="WIP" 
                 iconPosition="start"
               />
+              <Tab 
+                icon={<PsychologyIcon />} 
+                label="Análise Preditiva" 
+                iconPosition="start"
+              />
             </Tabs>
           </Box>
           
@@ -204,6 +211,10 @@ function App() {
           
           <TabPanel value={currentTab} index={3}>
             <WIPControl tasks={tasks} onTasksUpdate={handleTasksUpdate} />
+          </TabPanel>
+          
+          <TabPanel value={currentTab} index={4}>
+            <PredictiveAnalysis tasks={tasks} />
           </TabPanel>
         </Container>
       </Box>

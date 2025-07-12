@@ -291,133 +291,6 @@ const TableView = ({ tasks, onTasksUpdate }) => {
     };
   };
 
-  const calculatePredictiveAnalysis = (sprintName) => {
-    const sprintTasks = tasks.filter(task => task.sprint === sprintName);
-    if (sprintTasks.length === 0) return null;
-
-    const analysis = {
-      trends: [],
-      overallTrend: 0,
-      riskLevel: 'low',
-      predictedDelivery: null,
-      confidence: 0
-    };
-
-    // Analisar tendência por desenvolvedor
-    const devAnalysis = {};
-    
-    sprintTasks.forEach(task => {
-      const dev = task.desenvolvedor || 'Não atribuído';
-      if (!devAnalysis[dev]) {
-        devAnalysis[dev] = {
-          tasks: [],
-          totalVariation: 0,
-          avgDailyChange: 0,
-          riskScore: 0
-        };
-      }
-      
-      // Calcular variação das reestimativas
-      const reestimativas = task.reestimativas || [];
-      const estimativaInicial = task.estimativa || 0;
-      const variations = [];
-      
-      for (let i = 0; i < reestimativas.length; i++) {
-        const currentValue = reestimativas[i] || estimativaInicial;
-        const previousValue = i === 0 ? estimativaInicial : (reestimativas[i-1] || estimativaInicial);
-        const variation = currentValue - previousValue;
-        variations.push(variation);
-      }
-      
-      // Calcular tendência (regressão linear simples)
-      const n = variations.length;
-      const x = variations.map((_, i) => i + 1);
-      const y = variations;
-      const sumX = x.reduce((a, b) => a + b, 0);
-      const sumY = y.reduce((a, b) => a + b, 0);
-      const sumXY = x.reduce((acc, xi, i) => acc + xi * y[i], 0);
-      const sumX2 = x.reduce((acc, xi) => acc + xi * xi, 0);
-      
-      const slope = n > 1 ? (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX) : 0;
-      const intercept = (sumY - slope * sumX) / n;
-      
-      devAnalysis[dev].tasks.push({
-        id: task.id,
-        atividade: task.atividade,
-        variations,
-        trend: slope,
-        intercept,
-        totalVariation: reestimativas[reestimativas.length - 1] - estimativaInicial
-      });
-      
-      devAnalysis[dev].totalVariation += reestimativas[reestimativas.length - 1] - estimativaInicial;
-      devAnalysis[dev].avgDailyChange += slope;
-    });
-
-    // Calcular análise geral
-    let totalTrendScore = 0;
-    let totalTasks = 0;
-    
-    Object.keys(devAnalysis).forEach(dev => {
-      const devData = devAnalysis[dev];
-      devData.avgDailyChange /= devData.tasks.length;
-      devData.riskScore = Math.abs(devData.avgDailyChange) * devData.tasks.length;
-      
-      analysis.trends.push({
-        desenvolvedor: dev,
-        avgDailyChange: devData.avgDailyChange,
-        totalVariation: devData.totalVariation,
-        riskScore: devData.riskScore,
-        tasksCount: devData.tasks.length
-      });
-      
-      totalTrendScore += devData.avgDailyChange * devData.tasks.length;
-      totalTasks += devData.tasks.length;
-    });
-
-    // Calcular tendência geral
-    analysis.overallTrend = totalTasks > 0 ? totalTrendScore / totalTasks : 0;
-    
-    // Determinar nível de risco
-    if (Math.abs(analysis.overallTrend) < 0.5) {
-      analysis.riskLevel = 'low';
-    } else if (Math.abs(analysis.overallTrend) < 1.5) {
-      analysis.riskLevel = 'medium';
-    } else {
-      analysis.riskLevel = 'high';
-    }
-    
-    // Calcular previsão de entrega
-    const currentTotalHours = sprintTasks.reduce((sum, task) => {
-      const reestimativas = task.reestimativas || [];
-      return sum + (reestimativas[reestimativas.length - 1] || task.estimativa || 0);
-    }, 0);
-    
-    const teamCapacity = teamConfig.developers * teamConfig.hoursPerDay;
-    const daysRemaining = Math.ceil(currentTotalHours / teamCapacity);
-    
-    // Projetar tendência futura
-    const projectedDailyChange = analysis.overallTrend;
-    const projectedTotalHours = currentTotalHours + (projectedDailyChange * teamConfig.sprintDays);
-    const projectedDaysNeeded = Math.ceil(projectedTotalHours / teamCapacity);
-    
-    analysis.predictedDelivery = {
-      currentDaysNeeded: daysRemaining,
-      projectedDaysNeeded,
-      projectedTotalHours,
-      willDeliver: projectedDaysNeeded <= teamConfig.sprintDays ? 'early' : 'late',
-      daysVariation: projectedDaysNeeded - teamConfig.sprintDays
-    };
-    
-    // Calcular confiança baseada na consistência das tendências
-    const trendVariance = analysis.trends.reduce((sum, trend) => {
-      return sum + Math.pow(trend.avgDailyChange - analysis.overallTrend, 2);
-    }, 0) / analysis.trends.length;
-    
-    analysis.confidence = Math.max(0, Math.min(100, 100 - (trendVariance * 20)));
-
-    return analysis;
-  };
 
   const calculateSprintStats = (sprintName) => {
     const sprintTasks = tasks.filter(task => task.sprint === sprintName);
@@ -741,7 +614,6 @@ const TableView = ({ tasks, onTasksUpdate }) => {
   };
 
   const sprintStats = calculateSprintStats(selectedSprint);
-  const predictiveAnalysis = calculatePredictiveAnalysis(selectedSprint);
 
   return (
     <Box>
@@ -764,12 +636,10 @@ const TableView = ({ tasks, onTasksUpdate }) => {
         <CardContent>
           <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)} sx={{ mb: 3 }}>
             <Tab label="📈 Burndown Chart" />
-            <Tab label="📊 Estatísticas" />
-            <Tab label="🔮 Análise Preditiva" />
           </Tabs>
           
-          {/* Aba 1: Burndown Chart */}
-          {activeTab === 0 && (
+          {/* Burndown Chart */}
+          {(
             <Box>
               <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
                 <Typography variant="h6">
@@ -825,272 +695,122 @@ const TableView = ({ tasks, onTasksUpdate }) => {
                 </Typography>
               </Box>
               
-              <Box sx={{ height: 400 }}>
-                {chartData && selectedSprint ? (
-                  <Line data={chartData} options={chartOptions} />
-                ) : (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                    <Typography color="text.secondary">
-                      Selecione um sprint para visualizar o burndown
-                    </Typography>
+              {/* Layout de duas colunas: Gráfico + Estatísticas */}
+              <Grid container spacing={3}>
+                {/* Coluna do Gráfico */}
+                <Grid item xs={12} lg={8}>
+                  <Box sx={{ height: 400 }}>
+                    {chartData && selectedSprint ? (
+                      <Line data={chartData} options={chartOptions} />
+                    ) : (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                        <Typography color="text.secondary">
+                          Selecione um sprint para visualizar o burndown
+                        </Typography>
+                      </Box>
+                    )}
                   </Box>
-                )}
-              </Box>
-            </Box>
-          )}
-          
-          {/* Aba 2: Estatísticas */}
-          {activeTab === 1 && (
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                Estatísticas do Sprint
-              </Typography>
-              
-              {selectedSprint && sprintStats.totalTasks > 0 ? (
-                <Grid container spacing={3}>
-                  <Grid item xs={12} md={4}>
-                    {/* Informações Básicas */}
-                    <Card variant="outlined" sx={{ p: 2, bgcolor: 'grey.50', mb: 2 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: 'primary.main' }}>
-                        📋 Informações Gerais
-                      </Typography>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">Sprint</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{selectedSprint}</Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" color="text.secondary">Progresso</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'success.main' }}>
-                          {sprintStats.completionRate.toFixed(1)}%
-                        </Typography>
-                      </Box>
-                    </Card>
-                    
-                    {/* Tarefas */}
-                    <Card variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: 'primary.main' }}>
-                        ✅ Tarefas
-                      </Typography>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">Total</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{sprintStats.totalTasks}</Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" color="text.secondary">Concluídas</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'success.main' }}>
-                          {sprintStats.completedTasks}
-                        </Typography>
-                      </Box>
-                    </Card>
-                  </Grid>
+                </Grid>
+                
+                {/* Coluna das Estatísticas */}
+                <Grid item xs={12} lg={4}>
+                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                    📊 Estatísticas do Sprint
+                    {selectedSprint && (
+                      <Chip 
+                        label={selectedSprint} 
+                        size="small" 
+                        color="primary" 
+                        sx={{ ml: 2 }}
+                      />
+                    )}
+                  </Typography>
                   
-                  <Grid item xs={12} md={4}>
-                    {/* Horas */}
-                    <Card variant="outlined" sx={{ p: 2, bgcolor: 'grey.50', mb: 2 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: 'primary.main' }}>
-                        ⏱️ Horas
-                      </Typography>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">Estimadas</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{sprintStats.totalHours}h</Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">Concluídas</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'success.main' }}>
-                          {sprintStats.completedHours}h
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" color="text.secondary">Trabalhadas</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'info.main' }}>
-                          {sprintStats.hoursWorked}h
-                        </Typography>
-                      </Box>
-                    </Card>
-                    
-                    {/* Previsão de Desenvolvedores */}
-                    {sprintStats.devsNeeded && (
-                      <Card variant="outlined" sx={{ p: 2, bgcolor: 'info.light', borderColor: 'info.main' }}>
-                        <Typography variant="subtitle2" sx={{ color: 'info.dark', fontWeight: 'bold', mb: 1 }}>
-                          👥 PREVISÃO DE DESENVOLVEDORES
+                  {selectedSprint && sprintStats.totalTasks > 0 ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, height: 350, overflowY: 'auto' }}>
+                      {/* Informações Básicas */}
+                      <Card variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: 'primary.main' }}>
+                          📋 Informações Gerais
                         </Typography>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                          <Typography variant="body2" color="text.secondary">Para {teamConfig.sprintDays} dias</Typography>
-                          <Typography variant="body2" sx={{ color: 'info.dark', fontWeight: 'bold' }}>
-                            {sprintStats.devsNeeded} dev{sprintStats.devsNeeded > 1 ? 's' : ''}
+                          <Typography variant="body2" color="text.secondary">Progresso</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                            {sprintStats.completionRate.toFixed(1)}%
                           </Typography>
                         </Box>
-                        <Divider sx={{ my: 1 }} />
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.75rem' }}>
-                          Outros cenários:
-                        </Typography>
-                        {sprintStats.scenarios && sprintStats.scenarios.map((scenario, index) => (
-                          <Box key={index} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                              {scenario.hours}h/dia
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                              {scenario.devs} dev{scenario.devs > 1 ? 's' : ''}
-                            </Typography>
-                          </Box>
-                        ))}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2" color="text.secondary">Sprint</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{selectedSprint}</Typography>
+                        </Box>
                       </Card>
-                    )}
-                  </Grid>
-                  
-                  <Grid item xs={12} md={4}>
-                    {/* Status do Prazo */}
-                    {chartData && chartData.daysNeeded && (
-                      <Card variant="outlined" sx={{ 
-                        p: 2, 
-                        bgcolor: chartData.willOverflow ? 'error.light' : 'success.light',
-                        borderColor: chartData.willOverflow ? 'error.main' : 'success.main'
-                      }}>
-                        <Typography variant="subtitle2" sx={{ 
-                          color: chartData.willOverflow ? 'error.dark' : 'success.dark',
-                          fontWeight: 'bold',
-                          mb: 1
+                      
+                      {/* Tarefas */}
+                      <Card variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: 'primary.main' }}>
+                          ✅ Tarefas
+                        </Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                          <Typography variant="body2" color="text.secondary">Total</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{sprintStats.totalTasks}</Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2" color="text.secondary">Concluídas</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                            {sprintStats.completedTasks}
+                          </Typography>
+                        </Box>
+                      </Card>
+                      
+                      {/* Horas */}
+                      <Card variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: 'primary.main' }}>
+                          ⏱️ Horas
+                        </Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                          <Typography variant="body2" color="text.secondary">Estimadas</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{sprintStats.totalHours}h</Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2" color="text.secondary">Concluídas</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                            {sprintStats.completedHours}h
+                          </Typography>
+                        </Box>
+                      </Card>
+                      
+                      {/* Status do Prazo */}
+                      {chartData && chartData.daysNeeded && (
+                        <Card variant="outlined" sx={{ 
+                          p: 2, 
+                          bgcolor: chartData.willOverflow ? 'error.light' : 'success.light',
+                          borderColor: chartData.willOverflow ? 'error.main' : 'success.main'
                         }}>
-                          {chartData.willOverflow ? '⚠️ PRAZO ESTOURADO' : '✅ PRAZO OK'}
-                        </Typography>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                          <Typography variant="body2" color="text.secondary">Dias necessários</Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{chartData.daysNeeded}</Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="body2" color="text.secondary">Dias do sprint</Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{teamConfig.sprintDays}</Typography>
-                        </Box>
-                        {chartData.willOverflow && (
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-                            <Typography variant="body2" color="text.secondary">Excesso</Typography>
-                            <Typography variant="body2" sx={{ color: 'error.dark', fontWeight: 'bold' }}>
-                              +{chartData.daysNeeded - teamConfig.sprintDays} dias
-                            </Typography>
+                          <Typography variant="subtitle2" sx={{ 
+                            color: chartData.willOverflow ? 'error.dark' : 'success.dark',
+                            fontWeight: 'bold',
+                            mb: 1
+                          }}>
+                            {chartData.willOverflow ? '⚠️ PRAZO ESTOURADO' : '✅ PRAZO OK'}
+                          </Typography>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography variant="body2" color="text.secondary">Necessários</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{chartData.daysNeeded} dias</Typography>
                           </Box>
-                        )}
-                      </Card>
-                    )}
-                  </Grid>
-                </Grid>
-              ) : (
-                <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-                  Selecione um sprint para ver as estatísticas
-                </Typography>
-              )}
-            </Box>
-          )}
-          
-          {/* Aba 3: Análise Preditiva */}
-          {activeTab === 2 && (
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                Análise Preditiva
-              </Typography>
-              
-              {selectedSprint && predictiveAnalysis ? (
-                <Grid container spacing={3}>
-                  <Grid item xs={12} md={6}>
-                    {/* Previsão Principal */}
-                    <Card variant="outlined" sx={{ 
-                      p: 2, 
-                      bgcolor: predictiveAnalysis.predictedDelivery?.willDeliver === 'early' ? 'success.light' : 'warning.light',
-                      borderColor: predictiveAnalysis.predictedDelivery?.willDeliver === 'early' ? 'success.main' : 'warning.main',
-                      mb: 2
-                    }}>
-                      <Typography variant="subtitle2" sx={{ 
-                        color: predictiveAnalysis.predictedDelivery?.willDeliver === 'early' ? 'success.dark' : 'warning.dark',
-                        fontWeight: 'bold',
-                        mb: 1
-                      }}>
-                        {predictiveAnalysis.predictedDelivery?.willDeliver === 'early' ? 
-                          '🚀 PROJETO DENTRO DO PRAZO' : 
-                          '⏰ PROJETO PODE ATRASAR'}
-                      </Typography>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">Tendência</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                          {predictiveAnalysis.overallTrend > 0 ? '+' : ''}{predictiveAnalysis.overallTrend.toFixed(2)}h/dia
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">Previsão</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                          {predictiveAnalysis.predictedDelivery?.projectedDaysNeeded} dias
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" color="text.secondary">Confiança</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                          {predictiveAnalysis.confidence.toFixed(0)}%
-                        </Typography>
-                      </Box>
-                    </Card>
-                    
-                    {/* Nível de Risco */}
-                    <Card variant="outlined" sx={{ 
-                      p: 2, 
-                      bgcolor: predictiveAnalysis.riskLevel === 'high' ? 'error.light' : 
-                               predictiveAnalysis.riskLevel === 'medium' ? 'warning.light' : 'success.light',
-                      borderColor: predictiveAnalysis.riskLevel === 'high' ? 'error.main' : 
-                                  predictiveAnalysis.riskLevel === 'medium' ? 'warning.main' : 'success.main'
-                    }}>
-                      <Typography variant="subtitle2" sx={{ 
-                        color: predictiveAnalysis.riskLevel === 'high' ? 'error.dark' : 
-                               predictiveAnalysis.riskLevel === 'medium' ? 'warning.dark' : 'success.dark',
-                        fontWeight: 'bold',
-                        mb: 1
-                      }}>
-                        Risco: {predictiveAnalysis.riskLevel === 'high' ? 'ALTO 🔴' : 
-                                predictiveAnalysis.riskLevel === 'medium' ? 'MÉDIO 🟡' : 'BAIXO 🟢'}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {predictiveAnalysis.riskLevel === 'high' ? 'Variações significativas detectadas' : 
-                         predictiveAnalysis.riskLevel === 'medium' ? 'Algumas variações observadas' : 'Estimativas estáveis'}
-                      </Typography>
-                    </Card>
-                  </Grid>
-                  
-                  <Grid item xs={12} md={6}>
-                    {/* Análise por Desenvolvedor */}
-                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: 'primary.main' }}>
-                      👨‍💻 Análise por Desenvolvedor
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="body2" color="text.secondary">Sprint</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{teamConfig.sprintDays} dias</Typography>
+                          </Box>
+                        </Card>
+                      )}
+                    </Box>
+                  ) : (
+                    <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                      Selecione um sprint para ver as estatísticas
                     </Typography>
-                    {predictiveAnalysis.trends.map((trend, index) => (
-                      <Card key={index} variant="outlined" sx={{ 
-                        p: 1.5, 
-                        mb: 1,
-                        bgcolor: Math.abs(trend.avgDailyChange) > 1 ? 'error.light' : 'grey.50',
-                        borderColor: Math.abs(trend.avgDailyChange) > 1 ? 'error.main' : 'grey.300'
-                      }}>
-                        <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                          {trend.desenvolvedor}
-                        </Typography>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                            Variação média
-                          </Typography>
-                          <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>
-                            {trend.avgDailyChange > 0 ? '+' : ''}{trend.avgDailyChange.toFixed(2)}h/dia
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                            {trend.tasksCount} tarefa{trend.tasksCount > 1 ? 's' : ''}
-                          </Typography>
-                          <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>
-                            {trend.totalVariation > 0 ? '+' : ''}{trend.totalVariation.toFixed(1)}h total
-                          </Typography>
-                        </Box>
-                      </Card>
-                    ))}
-                  </Grid>
+                  )}
                 </Grid>
-              ) : (
-                <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-                  Selecione um sprint para ver a análise preditiva
-                </Typography>
-              )}
+              </Grid>
             </Box>
           )}
         </CardContent>
