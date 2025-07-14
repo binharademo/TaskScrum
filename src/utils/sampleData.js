@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 export const loadSampleData = async () => {
   try {
-    const response = await fetch('/backlog-sample.csv');
+    const response = await fetch('/backlog-v1.csv');
     const csvText = await response.text();
     
     const lines = csvText.split('\n');
@@ -47,7 +47,7 @@ export const loadSampleData = async () => {
         observacoes: row.Observações || row.Observacoes || '',
         estimativaHoras: parseFloat(row['Estimativa em horas'] || row.EstimativaHoras || 0),
         horasMedidas: parseFloat(row['Horas medidas'] || row.HorasMedidas || 0),
-        status: randomStatus,
+        status: row.Status || randomStatus,
         // Reestimativas diárias (10 dias de sprint) - inicializar com a estimativa inicial
         reestimativas: Array.from({ length: 10 }, () => 
           parseFloat(row['Estimativa (h)'] || row.Estimativa || 0)

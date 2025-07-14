@@ -1,0 +1,11 @@
+ID;Épico;User Story;Tela;Atividade;Detalhamento;Tipo Atividade;Estimativa (h);Desenvolvedor;Sprint;Prioridade;Tamanho Story;Observações;Status
+1;Autenticação;Como usuário quero fazer login;Login;Criar formulário de login;Implementar campos email e senha com validação;Frontend;8;João Silva;2;Alta;M;Usar Material-UI para componentes;Backlog
+2;Autenticação;Como usuário quero fazer login;Login;Validar credenciais no backend;Criar endpoint de autenticação com JWT;Backend;12;Maria Santos;2;Alta;M;Implementar bcrypt para senhas;Priorizado
+3;Autenticação;Como usuário quero recuperar senha;Recuperação;Criar tela de recuperação;Interface para solicitar nova senha;Frontend;6;João Silva;2;Média;S;Enviar email com link de reset;Doing
+4;Dashboard;Como gestor quero ver métricas;Dashboard;Implementar gráficos de burndown;Gráfico com Chart.js mostrando progresso;Frontend;16;Ana Costa;2;Alta;L;Usar dados reais do sprint;Done
+5;Dashboard;Como gestor quero ver métricas;Dashboard;Calcular velocidade da equipe;Algoritmo para calcular story points por sprint;Backend;10;Carlos Lima;2;Média;M;Histórico dos últimos 3 sprints;Backlog
+6;Tarefas;Como dev quero gerenciar tarefas;Kanban;Criar board de tarefas;Interface drag and drop para tarefas;Frontend;20;João Silva;2;Alta;L;Usar react-beautiful-dnd;Priorizado
+7;Tarefas;Como dev quero gerenciar tarefas;Kanban;Implementar CRUD de tarefas;Endpoints para criar, editar e excluir;Backend;15;Maria Santos;2;Alta;L;Validação de dados obrigatória;Doing
+8;Relatórios;Como gestor quero exportar dados;Relatórios;Gerar relatório em PDF;Funcionalidade de export com dados filtrados;Backend;14;Carlos Lima;2;Baixa;M;Usar biblioteca jsPDF;Backlog
+9;Configurações;Como admin quero gerenciar usuários;Usuários;Tela de gerenciamento de usuários;CRUD completo de usuários do sistema;Frontend;18;Ana Costa;2;Média;L;Incluir permissões por perfil;Backlog
+10;Notificações;Como usuário quero receber alertas;Notificações;Sistema de notificações push;Implementar push notifications no browser;Frontend;12;João Silva;2;Baixa;M;Usar service workers;Backlog

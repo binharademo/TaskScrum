@@ -3,12 +3,26 @@ import { v4 as uuidv4 } from 'uuid';
 
 const parseCSV = (csvText) => {
   const lines = csvText.split('\n');
-  const headers = lines[0].split(';').map(h => h.trim().replace(/^\uFEFF/, ''));
+  
+  // Detectar separador automaticamente (tab, ponto e vírgula ou vírgula)
+  const firstLine = lines[0];
+  let separator = ';';
+  if (firstLine.includes('\t')) {
+    separator = '\t';
+  } else if (firstLine.includes(',') && !firstLine.includes(';')) {
+    separator = ',';
+  }
+  
+  console.log('Separador detectado:', separator === '\t' ? 'TAB' : separator);
+  
+  const headers = firstLine.split(separator).map(h => h.trim().replace(/^\uFEFF/, ''));
+  console.log('Headers encontrados:', headers);
+  
   const data = [];
   
   for (let i = 1; i < lines.length; i++) {
     if (lines[i].trim()) {
-      const values = lines[i].split(';');
+      const values = lines[i].split(separator);
       const row = {};
       headers.forEach((header, index) => {
         row[header] = values[index] ? values[index].trim() : '';
@@ -17,6 +31,7 @@ const parseCSV = (csvText) => {
     }
   }
   
+  console.log('Dados parseados:', data.length, 'linhas');
   return data;
 };
 
@@ -42,21 +57,21 @@ export const importExcelFile = async (file) => {
         const tasks = jsonData.map((row, index) => ({
           id: uuidv4(),
           originalId: row.ID || index + 1,
-          epico: row.Épico || row.Epico || '',
-          userStory: row['User Story'] || row.UserStory || '',
-          tela: row.Tela || '',
-          atividade: row.Atividade || '',
-          detalhamento: row.Detalhamento || '',
-          tipoAtividade: row['Tipo Atividade'] || row.TipoAtividade || '',
+          epico: String(row.Épico || row.Epico || ''),
+          userStory: String(row['User Story'] || row.UserStory || ''),
+          tela: String(row.Tela || ''),
+          atividade: String(row.Atividade || ''),
+          detalhamento: String(row.Detalhamento || ''),
+          tipoAtividade: String(row['Tipo Atividade'] || row.TipoAtividade || ''),
           estimativa: parseFloat(row['Estimativa (h)'] || row.Estimativa || 0),
-          desenvolvedor: (row.Desenvolvedor || '').trim(),
-          sprint: (row.Sprint || '').trim(),
-          prioridade: row.Prioridade || 'Média',
-          tamanhoStory: row['Tamanho Story'] || row.TamanhoStory || '',
-          observacoes: row.Observações || row.Observacoes || '',
+          desenvolvedor: String(row.Desenvolvedor || '').trim(),
+          sprint: String(row.Sprint || '').trim(),
+          prioridade: String(row.Prioridade || 'Média'),
+          tamanhoStory: String(row['Tamanho Story'] || row.TamanhoStory || ''),
+          observacoes: String(row.Observações || row.Observacoes || ''),
           estimativaHoras: parseFloat(row['Estimativa em horas'] || row.EstimativaHoras || 0),
           horasMedidas: parseFloat(row['Horas medidas'] || row.HorasMedidas || 0),
-          status: 'Backlog',
+          status: String(row.Status || 'Backlog'),
           // Reestimativas diárias (10 dias de sprint)
           reestimativas: Array.from({ length: 10 }, (_, i) => 
             parseFloat(row[`Dia${i + 1}`] || row[`dia${i + 1}`] || 0)

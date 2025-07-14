@@ -18,7 +18,9 @@ import {
   Psychology as PsychologyIcon,
   Upload as UploadIcon,
   Brightness4,
-  Brightness7
+  Brightness7,
+  Delete as DeleteIcon,
+  Download as DownloadIcon
 } from '@mui/icons-material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -57,6 +59,8 @@ function App() {
   useEffect(() => {
     const initializeApp = async () => {
       const savedTasks = loadTasksFromStorage();
+      const wasCleared = localStorage.getItem('tasksCleared') === 'true';
+      
       if (savedTasks.length > 0) {
         // Migrar tarefas existentes para incluir reestimativas
         const migratedTasks = savedTasks.map(task => ({
@@ -65,7 +69,8 @@ function App() {
         }));
         setTasks(migratedTasks);
         saveTasksToStorage(migratedTasks);
-      } else {
+      } else if (!wasCleared) {
+        // Só carrega dados de exemplo se não foi zerado pelo usuário
         const sampleTasks = await loadSampleData();
         if (sampleTasks.length > 0) {
           // Garantir que todas as tarefas tenham o campo reestimativas
@@ -101,6 +106,11 @@ function App() {
     
     setTasks(tasksWithTimestamps);
     saveTasksToStorage(tasksWithTimestamps);
+    
+    // Se carregando novos dados, remover flag de "zerado"
+    if (tasksWithTimestamps.length > 0) {
+      localStorage.removeItem('tasksCleared');
+    }
   };
 
   const handleFileUpload = async (event) => {
@@ -119,6 +129,39 @@ function App() {
     const newDarkMode = !darkMode;
     setDarkMode(newDarkMode);
     localStorage.setItem('darkMode', JSON.stringify(newDarkMode));
+  };
+
+  const handleClearTasks = () => {
+    if (window.confirm('Tem certeza que deseja zerar todas as atividades? Esta ação não pode ser desfeita.')) {
+      setTasks([]);
+      saveTasksToStorage([]);
+      // Marcar que a base foi zerada para não recarregar dados de exemplo
+      localStorage.setItem('tasksCleared', 'true');
+    }
+  };
+
+  const handleDownloadData = () => {
+    const dataToExport = {
+      tasks,
+      exportDate: new Date().toISOString(),
+      totalTasks: tasks.length,
+      metadata: {
+        version: '1.0',
+        source: 'TaskTracker'
+      }
+    };
+    
+    const dataStr = JSON.stringify(dataToExport, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `tasktracker-data-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const theme = createTheme({
@@ -157,6 +200,18 @@ function App() {
                 </IconButton>
               </Tooltip>
             </label>
+            
+            <Tooltip title="Download de todos os dados">
+              <IconButton color="inherit" onClick={handleDownloadData}>
+                <DownloadIcon />
+              </IconButton>
+            </Tooltip>
+            
+            <Tooltip title="Zerar todas as atividades">
+              <IconButton color="inherit" onClick={handleClearTasks}>
+                <DeleteIcon />
+              </IconButton>
+            </Tooltip>
             
             <Tooltip title="Alternar tema">
               <IconButton color="inherit" onClick={toggleDarkMode}>

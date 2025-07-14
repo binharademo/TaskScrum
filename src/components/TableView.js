@@ -156,9 +156,16 @@ const TableView = ({ tasks, onTasksUpdate }) => {
         // Definir o valor para o dia atual
         newReestimativas[dayIndex] = newValue;
         
-        // Replicar o valor para todos os dias subsequentes
-        for (let i = dayIndex + 1; i < 10; i++) {
-          newReestimativas[i] = newValue;
+        // Se o valor for zero, zerar todas as posições seguintes
+        if (newValue === 0) {
+          for (let i = dayIndex + 1; i < 10; i++) {
+            newReestimativas[i] = 0;
+          }
+        } else {
+          // Replicar o valor para todos os dias subsequentes (comportamento normal)
+          for (let i = dayIndex + 1; i < 10; i++) {
+            newReestimativas[i] = newValue;
+          }
         }
         
         return { 
@@ -375,16 +382,41 @@ const TableView = ({ tasks, onTasksUpdate }) => {
 
   const filteredTasks = getFilteredAndSortedTasks();
   
+  // Calcular valor medido para uma tarefa (somatório dos valores dos 10 dias)
+  // Só calcula a soma quando um dos dias tiver valor zero
+  const calculateValorMedido = (task) => {
+    const taskWithReestimativas = ensureReestimativas(task);
+    let hasZero = false;
+    let total = 0;
+    
+    // Verificar se algum dia tem valor zero
+    for (let i = 0; i < 10; i++) {
+      const dayValue = taskWithReestimativas.reestimativas && taskWithReestimativas.reestimativas[i] !== undefined 
+        ? taskWithReestimativas.reestimativas[i] 
+        : task.estimativa || 0;
+      
+      if (dayValue === 0) {
+        hasZero = true;
+      }
+      total += dayValue;
+    }
+    
+    // Só retorna a soma se houver pelo menos um zero
+    return hasZero ? total : 0;
+  };
+
   // Calcular somatórios por coluna
   const calculateColumnTotals = () => {
     const totals = {
       estimativa: 0,
-      dias: Array.from({ length: 10 }, () => 0)
+      dias: Array.from({ length: 10 }, () => 0),
+      valorMedido: 0
     };
     
     filteredTasks.forEach(task => {
       const taskWithReestimativas = ensureReestimativas(task);
       totals.estimativa += task.estimativa || 0;
+      totals.valorMedido += calculateValorMedido(task);
       
       for (let i = 0; i < 10; i++) {
         const dayValue = i === 0 
@@ -913,6 +945,9 @@ const TableView = ({ tasks, onTasksUpdate }) => {
                   Dia {i + 1}
                 </TableCell>
               ))}
+              <TableCell sx={{ width: '8%', textAlign: 'center', minWidth: 80, fontSize: '0.75rem' }}>
+                Valor Medido
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -927,6 +962,9 @@ const TableView = ({ tasks, onTasksUpdate }) => {
                   {columnTotals.dias[i].toFixed(1)}h
                 </TableCell>
               ))}
+              <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '0.875rem' }}>
+                {columnTotals.valorMedido ? columnTotals.valorMedido.toFixed(1) : '0.0'}h
+              </TableCell>
             </TableRow>
             {paginatedTasks.map((task) => (
               <TableRow key={task.id} hover>
@@ -1055,6 +1093,15 @@ const TableView = ({ tasks, onTasksUpdate }) => {
                     </TableCell>
                   );
                 })}
+                <TableCell sx={{ textAlign: 'center', padding: '8px 4px' }}>
+                  <span style={{ 
+                    fontSize: '0.875rem', 
+                    fontWeight: 'bold',
+                    color: '#1976d2'
+                  }}>
+                    {calculateValorMedido(task).toFixed(1)}h
+                  </span>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
