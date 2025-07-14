@@ -268,35 +268,48 @@ const TableView = ({ tasks, onTasksUpdate }) => {
       } else {
         const dayIndex = i - 1; // Dia 1 = index 0, Dia 2 = index 1, etc.
         
-        // Calcular trabalho restante baseado nas tarefas finalizadas
-        let workRemaining = totalHours;
+        // Usar o somatório das reestimativas para este dia (mesma lógica da tabela)
+        let dayTotal = 0;
+        sprintTasks.forEach(task => {
+          const taskWithReestimativas = ensureReestimativas(task);
+          const dayValue = dayIndex === 0 
+            ? task.estimativa || 0
+            : (taskWithReestimativas.reestimativas && taskWithReestimativas.reestimativas[dayIndex] !== undefined 
+                ? taskWithReestimativas.reestimativas[dayIndex] 
+                : task.estimativa || 0);
+          dayTotal += dayValue;
+        });
         
-        // Para cada tarefa, verificar se foi finalizada até este dia
+        actualLine.push(Math.max(0, dayTotal));
+        
+        // Linha de previsão da equipe - baseada no progresso real atual
+        // Calcular velocidade real baseada no trabalho já executado
+        let workExecuted = 0;
         sprintTasks.forEach(task => {
           const taskWithReestimativas = ensureReestimativas(task);
           const estimativaOriginal = task.estimativa || 0;
           
-          // Verificar se a tarefa foi finalizada até este dia
-          for (let d = 0; d <= dayIndex && d < 10; d++) {
+          // Verificar se a tarefa foi finalizada até o dia anterior
+          for (let d = 0; d < dayIndex && d < 10; d++) {
             const dayValue = d === 0 
               ? task.estimativa || 0
               : (taskWithReestimativas.reestimativas && taskWithReestimativas.reestimativas[d] !== undefined 
                   ? taskWithReestimativas.reestimativas[d] 
                   : task.estimativa || 0);
             
-            // Se o valor chegou a zero neste dia, a tarefa foi concluída
-            if (dayValue === 0 && d <= dayIndex) {
-              workRemaining -= estimativaOriginal;
-              break; // Tarefa já foi contabilizada como concluída
+            if (dayValue === 0 && d < dayIndex) {
+              workExecuted += estimativaOriginal;
+              break;
             }
           }
         });
         
-        actualLine.push(Math.max(0, workRemaining));
+        // Velocidade real = trabalho executado / dias decorridos
+        const realVelocity = dayIndex > 0 ? workExecuted / dayIndex : teamCapacityPerDay;
         
-        // Linha de capacidade - decréscimo baseado na capacidade da equipe
-        const capacityRemaining = totalHours - (teamCapacityPerDay * i);
-        capacityLine.push(Math.max(0, capacityRemaining));
+        // Projeção baseada na velocidade real
+        const projectedWork = totalHours - (realVelocity * i);
+        capacityLine.push(Math.max(0, projectedWork));
       }
     }
 
@@ -319,7 +332,7 @@ const TableView = ({ tasks, onTasksUpdate }) => {
           tension: 0.1
         },
         {
-          label: `Previsão Equipe (${teamConfig.developers} devs × ${teamConfig.hoursPerDay}h = ${teamCapacityPerDay}h/dia)`,
+          label: 'Projeção Real (baseada na velocidade atual)',
           data: capacityLine,
           borderColor: 'rgb(54, 162, 235)',
           backgroundColor: 'rgba(54, 162, 235, 0.2)',
@@ -340,37 +353,67 @@ const TableView = ({ tasks, onTasksUpdate }) => {
     const totalTasks = sprintTasks.length;
     const completedTasks = sprintTasks.filter(task => task.status === 'Done').length;
     const totalHours = sprintTasks.reduce((sum, task) => sum + task.estimativa, 0);
-    const completedHours = sprintTasks
-      .filter(task => task.status === 'Done')
-      .reduce((sum, task) => sum + task.estimativa, 0);
-    const hoursWorked = sprintTasks.reduce((sum, task) => sum + task.horasMedidas, 0);
+    
+    // Calcular trabalho executado baseado nas finalizações (zeros)
+    let hoursExecuted = 0;
+    sprintTasks.forEach(task => {
+      const taskWithReestimativas = ensureReestimativas(task);
+      const estimativaOriginal = task.estimativa || 0;
+      
+      // Verificar se a tarefa foi finalizada em algum dia
+      for (let d = 0; d < 10; d++) {
+        const dayValue = d === 0 
+          ? task.estimativa || 0
+          : (taskWithReestimativas.reestimativas && taskWithReestimativas.reestimativas[d] !== undefined 
+              ? taskWithReestimativas.reestimativas[d] 
+              : task.estimativa || 0);
+        
+        if (dayValue === 0) {
+          hoursExecuted += estimativaOriginal;
+          break;
+        }
+      }
+    });
+
+    const hoursRemaining = totalHours - hoursExecuted;
+    const executionRate = totalHours > 0 ? (hoursExecuted / totalHours) * 100 : 0;
     const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
-    // Cálculos de previsão de desenvolvedores
+    // Cálculos de previsão baseados na capacidade atual
     const sprintDays = teamConfig.sprintDays;
     const hoursPerDay = teamConfig.hoursPerDay;
-    const totalCapacityNeeded = totalHours;
-    const totalCapacityAvailable = sprintDays * hoursPerDay;
+    const currentDevs = teamConfig.developers;
+    const currentCapacity = currentDevs * hoursPerDay * sprintDays;
     
     // Quantos devs são necessários para cumprir o prazo
-    const devsNeeded = Math.ceil(totalCapacityNeeded / totalCapacityAvailable);
+    const devsNeeded = Math.ceil(totalHours / (sprintDays * hoursPerDay));
     
-    // Cenários alternativos
-    const scenarios = [
-      { hours: 4, devs: Math.ceil(totalCapacityNeeded / (sprintDays * 4)) },
-      { hours: 6, devs: Math.ceil(totalCapacityNeeded / (sprintDays * 6)) },
-      { hours: 8, devs: Math.ceil(totalCapacityNeeded / (sprintDays * 8)) }
-    ];
+    // Velocidade atual (horas executadas por dia)
+    const currentVelocity = hoursExecuted / Math.max(1, sprintDays); // evitar divisão por zero
+    const idealVelocity = totalHours / sprintDays;
+    
+    // Previsão de conclusão baseada na velocidade atual
+    const daysToComplete = currentVelocity > 0 ? Math.ceil(hoursRemaining / currentVelocity) : sprintDays;
+    
+    // Status do projeto
+    const isOnTrack = executionRate >= (100 / sprintDays) * Math.min(sprintDays, 10);
+    const riskLevel = executionRate < 50 ? 'Alto' : executionRate < 80 ? 'Médio' : 'Baixo';
 
     return {
       totalTasks,
       completedTasks,
       totalHours,
-      completedHours,
-      hoursWorked,
+      hoursExecuted,
+      hoursRemaining,
+      executionRate,
       completionRate,
+      currentVelocity,
+      idealVelocity,
+      daysToComplete,
       devsNeeded,
-      scenarios
+      currentCapacity,
+      isOnTrack,
+      riskLevel
     };
   };
 
