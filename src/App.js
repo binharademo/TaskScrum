@@ -30,7 +30,7 @@ import TableView from './components/TableView';
 import BurndownChart from './components/BurndownChart';
 import WIPControl from './components/WIPControl';
 import PredictiveAnalysis from './components/PredictiveAnalysis';
-import { loadTasksFromStorage, saveTasksToStorage, getCurrentRoom, setCurrentRoom } from './utils/storage';
+import { loadTasksFromStorage, saveTasksToStorage, getCurrentRoom, setCurrentRoom } from './utils/vercelStorage';
 import RoomSelector from './components/RoomSelector';
 import { importExcelFile } from './utils/excelImport';
 import { loadSampleData } from './utils/sampleData';
@@ -72,30 +72,36 @@ function App() {
         return;
       }
       
-      // Carregar dados da sala atual
-      const savedTasks = loadTasksFromStorage();
-      const wasCleared = localStorage.getItem('tasksCleared') === 'true';
-      
-      if (savedTasks.length > 0) {
-        // Migrar tarefas existentes para incluir reestimativas
-        const migratedTasks = savedTasks.map(task => ({
-          ...task,
-          reestimativas: task.reestimativas || Array.from({ length: 10 }, () => task.estimativa || 0)
-        }));
-        setTasks(migratedTasks);
-        saveTasksToStorage(migratedTasks);
-      } else if (!wasCleared) {
-        // Só carrega dados de exemplo se não foi zerado pelo usuário
-        const sampleTasks = await loadSampleData();
-        if (sampleTasks.length > 0) {
-          // Garantir que todas as tarefas tenham o campo reestimativas
-          const tasksWithReestimativas = sampleTasks.map(task => ({
+      try {
+        // Carregar dados da sala atual via Vercel KV
+        const savedTasks = await loadTasksFromStorage();
+        const wasCleared = localStorage.getItem('tasksCleared') === 'true';
+        
+        if (savedTasks.length > 0) {
+          // Migrar tarefas existentes para incluir reestimativas
+          const migratedTasks = savedTasks.map(task => ({
             ...task,
             reestimativas: task.reestimativas || Array.from({ length: 10 }, () => task.estimativa || 0)
           }));
-          setTasks(tasksWithReestimativas);
-          saveTasksToStorage(tasksWithReestimativas);
+          setTasks(migratedTasks);
+          await saveTasksToStorage(migratedTasks);
+        } else if (!wasCleared) {
+          // Só carrega dados de exemplo se não foi zerado pelo usuário
+          const sampleTasks = await loadSampleData();
+          if (sampleTasks.length > 0) {
+            // Garantir que todas as tarefas tenham o campo reestimativas
+            const tasksWithReestimativas = sampleTasks.map(task => ({
+              ...task,
+              reestimativas: task.reestimativas || Array.from({ length: 10 }, () => task.estimativa || 0)
+            }));
+            setTasks(tasksWithReestimativas);
+            await saveTasksToStorage(tasksWithReestimativas);
+          }
         }
+      } catch (error) {
+        console.error('Error loading data:', error);
+        // Em caso de erro, abrir seletor de sala
+        setRoomSelectorOpen(true);
       }
       
       const savedTheme = localStorage.getItem('darkMode');
@@ -111,7 +117,7 @@ function App() {
     setCurrentTab(newValue);
   };
 
-  const handleTasksUpdate = (updatedTasks) => {
+  const handleTasksUpdate = async (updatedTasks) => {
     // Garantir que todas as tarefas tenham timestamps
     const tasksWithTimestamps = updatedTasks.map(task => ({
       ...task,
@@ -120,7 +126,13 @@ function App() {
     }));
     
     setTasks(tasksWithTimestamps);
-    saveTasksToStorage(tasksWithTimestamps);
+    
+    try {
+      await saveTasksToStorage(tasksWithTimestamps);
+    } catch (error) {
+      console.error('Error saving tasks:', error);
+      // Mostrar erro para o usuário se necessário
+    }
     
     // Se carregando novos dados, remover flag de "zerado"
     if (tasksWithTimestamps.length > 0) {
@@ -146,26 +158,35 @@ function App() {
     localStorage.setItem('darkMode', JSON.stringify(newDarkMode));
   };
 
-  const handleClearTasks = () => {
+  const handleClearTasks = async () => {
     if (window.confirm('Tem certeza que deseja zerar todas as atividades? Esta ação não pode ser desfeita.')) {
       setTasks([]);
-      saveTasksToStorage([]);
-      // Marcar que a base foi zerada para não recarregar dados de exemplo
-      localStorage.setItem('tasksCleared', 'true');
+      try {
+        await saveTasksToStorage([]);
+        // Marcar que a base foi zerada para não recarregar dados de exemplo
+        localStorage.setItem('tasksCleared', 'true');
+      } catch (error) {
+        console.error('Error clearing tasks:', error);
+      }
     }
   };
 
-  const handleRoomSelected = (roomCode) => {
+  const handleRoomSelected = async (roomCode) => {
     setCurrentRoomState(roomCode);
     setRoomSelectorOpen(false);
     
-    // Carregar dados da nova sala
-    const roomTasks = loadTasksFromStorage(roomCode);
-    const migratedTasks = roomTasks.map(task => ({
-      ...task,
-      reestimativas: task.reestimativas || Array.from({ length: 10 }, () => task.estimativa || 0)
-    }));
-    setTasks(migratedTasks);
+    try {
+      // Carregar dados da nova sala
+      const roomTasks = await loadTasksFromStorage(roomCode);
+      const migratedTasks = roomTasks.map(task => ({
+        ...task,
+        reestimativas: task.reestimativas || Array.from({ length: 10 }, () => task.estimativa || 0)
+      }));
+      setTasks(migratedTasks);
+    } catch (error) {
+      console.error('Error loading room data:', error);
+      setTasks([]);
+    }
   };
 
   const handleOpenRoomSelector = () => {

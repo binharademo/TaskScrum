@@ -29,7 +29,7 @@ import {
   roomExists,
   getAvailableRooms,
   loadTasksFromStorage
-} from '../utils/storage';
+} from '../utils/vercelStorage';
 import { loadSampleData } from '../utils/sampleData';
 
 const RoomSelector = ({ open, onRoomSelected }) => {
@@ -40,12 +40,21 @@ const RoomSelector = ({ open, onRoomSelected }) => {
   const [currentRoom, setCurrentRoomState] = useState('');
 
   useEffect(() => {
-    if (open) {
-      const rooms = getAvailableRooms();
-      setAvailableRooms(rooms);
-      const current = getCurrentRoom();
-      setCurrentRoomState(current || '');
-    }
+    const loadRooms = async () => {
+      if (open) {
+        try {
+          const rooms = await getAvailableRooms();
+          setAvailableRooms(rooms);
+          const current = getCurrentRoom();
+          setCurrentRoomState(current || '');
+        } catch (error) {
+          console.error('Error loading rooms:', error);
+          setError('Erro ao carregar salas disponíveis');
+        }
+      }
+    };
+    
+    loadRooms();
   }, [open]);
 
   const handleCreateRoom = async () => {
@@ -76,7 +85,7 @@ const RoomSelector = ({ open, onRoomSelected }) => {
     }
   };
 
-  const handleJoinRoom = () => {
+  const handleJoinRoom = async () => {
     const roomCode = joinRoomCode.trim().toUpperCase();
     
     if (!roomCode) {
@@ -84,15 +93,21 @@ const RoomSelector = ({ open, onRoomSelected }) => {
       return;
     }
 
-    if (!roomExists(roomCode)) {
-      setError(`Sala "${roomCode}" não encontrada`);
-      return;
-    }
+    try {
+      const exists = await roomExists(roomCode);
+      if (!exists) {
+        setError(`Sala "${roomCode}" não encontrada`);
+        return;
+      }
 
-    setCurrentRoom(roomCode);
-    onRoomSelected(roomCode);
-    setJoinRoomCode('');
-    setError('');
+      setCurrentRoom(roomCode);
+      onRoomSelected(roomCode);
+      setJoinRoomCode('');
+      setError('');
+    } catch (error) {
+      console.error('Error checking room:', error);
+      setError('Erro ao verificar sala');
+    }
   };
 
   const handleSelectExistingRoom = (roomCode) => {
@@ -100,9 +115,14 @@ const RoomSelector = ({ open, onRoomSelected }) => {
     onRoomSelected(roomCode);
   };
 
-  const getRoomTaskCount = (roomCode) => {
-    const tasks = loadTasksFromStorage(roomCode);
-    return tasks.length;
+  const getRoomTaskCount = async (roomCode) => {
+    try {
+      const tasks = await loadTasksFromStorage(roomCode);
+      return tasks.length;
+    } catch (error) {
+      console.error('Error getting task count:', error);
+      return 0;
+    }
   };
 
   return (
@@ -140,7 +160,7 @@ const RoomSelector = ({ open, onRoomSelected }) => {
                   >
                     <ListItemText
                       primary={roomCode}
-                      secondary={`${getRoomTaskCount(roomCode)} tarefas`}
+                      secondary="Sala compartilhada"
                     />
                     {roomCode === currentRoom && (
                       <Chip label="Atual" size="small" color="primary" />
