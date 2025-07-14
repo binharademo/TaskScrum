@@ -20,7 +20,8 @@ import {
   Brightness4,
   Brightness7,
   Delete as DeleteIcon,
-  Download as DownloadIcon
+  Download as DownloadIcon,
+  Group as GroupIcon
 } from '@mui/icons-material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -29,7 +30,8 @@ import TableView from './components/TableView';
 import BurndownChart from './components/BurndownChart';
 import WIPControl from './components/WIPControl';
 import PredictiveAnalysis from './components/PredictiveAnalysis';
-import { loadTasksFromStorage, saveTasksToStorage } from './utils/storage';
+import { loadTasksFromStorage, saveTasksToStorage, getCurrentRoom, setCurrentRoom } from './utils/storage';
+import RoomSelector from './components/RoomSelector';
 import { importExcelFile } from './utils/excelImport';
 import { loadSampleData } from './utils/sampleData';
 
@@ -55,9 +57,22 @@ function App() {
   const [currentTab, setCurrentTab] = useState(0);
   const [tasks, setTasks] = useState([]);
   const [darkMode, setDarkMode] = useState(false);
+  const [currentRoom, setCurrentRoomState] = useState('');
+  const [roomSelectorOpen, setRoomSelectorOpen] = useState(false);
 
   useEffect(() => {
     const initializeApp = async () => {
+      // Verificar sala atual
+      const room = getCurrentRoom();
+      setCurrentRoomState(room || '');
+      
+      // Se não há sala selecionada, abrir seletor
+      if (!room) {
+        setRoomSelectorOpen(true);
+        return;
+      }
+      
+      // Carregar dados da sala atual
       const savedTasks = loadTasksFromStorage();
       const wasCleared = localStorage.getItem('tasksCleared') === 'true';
       
@@ -140,6 +155,23 @@ function App() {
     }
   };
 
+  const handleRoomSelected = (roomCode) => {
+    setCurrentRoomState(roomCode);
+    setRoomSelectorOpen(false);
+    
+    // Carregar dados da nova sala
+    const roomTasks = loadTasksFromStorage(roomCode);
+    const migratedTasks = roomTasks.map(task => ({
+      ...task,
+      reestimativas: task.reestimativas || Array.from({ length: 10 }, () => task.estimativa || 0)
+    }));
+    setTasks(migratedTasks);
+  };
+
+  const handleOpenRoomSelector = () => {
+    setRoomSelectorOpen(true);
+  };
+
   const handleDownloadData = () => {
     const dataToExport = {
       tasks,
@@ -184,7 +216,18 @@ function App() {
           <Toolbar>
             <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
               TaskTracker - Gestão de Tarefas
+              {currentRoom && (
+                <Typography variant="caption" sx={{ ml: 2, opacity: 0.8 }}>
+                  Sala: {currentRoom}
+                </Typography>
+              )}
             </Typography>
+            
+            <Tooltip title="Trocar de sala">
+              <IconButton color="inherit" onClick={handleOpenRoomSelector}>
+                <GroupIcon />
+              </IconButton>
+            </Tooltip>
             
             <input
               accept=".xlsx,.xls,.csv"
@@ -272,6 +315,11 @@ function App() {
             <PredictiveAnalysis tasks={tasks} />
           </TabPanel>
         </Container>
+        
+        <RoomSelector 
+          open={roomSelectorOpen}
+          onRoomSelected={handleRoomSelected}
+        />
       </Box>
     </ThemeProvider>
   );

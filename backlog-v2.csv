@@ -1,0 +1,57 @@
+﻿ID;Épico;User Story;Tela;Atividade;Detalhamento;Tipo Atividade;Estimativa (h);Desenvolvedor;Sprint;Prioridade;Tamanho Story;Observações;status
+13;Autenticação;Implementar sistema de login;login.html;Criar interface de login;https://winaudio.atlassian.net/wiki/x/VAD6CQ;Layout;2;guilherme ;2;Alta;M;Formulário de login;backlog
+14;Autenticação;Implementar sistema de login;login.html;Implementar autenticação;https://winaudio.atlassian.net/wiki/x/NoD6CQ;Design;2;guilherme ;2;Alta;M;Login/logout/recuperação;backlog
+15;Autenticação;Implementar sistema de login;login.html;Criar validações de login;https://winaudio.atlassian.net/wiki/x/YQD6CQ;Validação;1;guilherme ;2;Alta;M;Email/senha;backlog
+16;Autenticação;Implementar sistema de login;login.html;Integrar com Supabase Auth;https://winaudio.atlassian.net/wiki/x/YQD5CQ;Integração Backend;2;guilherme ;2;Alta;M;Autenticação segura;backlog
+22;Componentes;Criar componentes reutilizáveis;sidebar.html;Criar sidebar principal;https://winaudio.atlassian.net/wiki/x/K4D6CQ;Layout;2;guilherme ;2;Alta;M;Menu lateral principal;backlog
+23;Componentes;Criar componentes reutilizáveis;exam-sidebar.html;Criar sidebar de exames;https://winaudio.atlassian.net/wiki/x/SID6CQ;Layout;2;guilherme ;2;Alta;M;Menu específico exames;backlog
+24;Componentes;Criar componentes reutilizáveis;exam-toolbar.html;Criar toolbar de exames;https://winaudio.atlassian.net/wiki/x/UoD6CQ;Layout;1;guilherme ;2;Alta;M;Barra de ações;backlog
+25;Componentes;Criar componentes reutilizáveis;menu_exame.html;Criar menu de navegação de exames;não realizado, tela html foi substituida pelo exam-sidebar;Design;2;guilherme ;2;Alta;M;Navegação entre seções;backlog
+27;Cadastros;Gerenciar cadastro de pacientes;pacientes.html;Criar interface de listagem;;Layout;0;eudemar;2;Alta;G;Tabela com filtros avançados;backlog
+28;Cadastros;Gerenciar cadastro de pacientes;pacientes.html;Implementar modal de cadastro/edição;;Design;0;eudemar;2;Alta;G;Formulário completo;backlog
+29;Cadastros;Gerenciar cadastro de pacientes;pacientes.html;Criar validações complexas;;Validação;0;eudemar;2;Alta;G;CPF, email, telefone, CEP;backlog
+30;Cadastros;Gerenciar cadastro de pacientes;pacientes.html;Implementar busca e filtros;;Design;0;eudemar;2;Alta;G;Filtros por múltiplos campos;backlog
+31;Cadastros;Gerenciar cadastro de pacientes;pacientes.html;Integrar com API Supabase;;Integração Backend;0;eudemar;2;Alta;G;CRUD completo;backlog
+32;Cadastros;Gerenciar cadastro de empresas;empresas.html;Criar interface de listagem;;Layout;0;eudemar;2;Alta;G;Tabela empresas;backlog
+33;Cadastros;Gerenciar cadastro de empresas;empresas.html;Implementar formulário de empresa;;Design;0;eudemar;2;Alta;G;CNPJ, endereço, contatos;backlog
+34;Cadastros;Gerenciar cadastro de empresas;empresas.html;Criar validações CNPJ e CEP;;Validação;0;eudemar;2;Alta;G;Validação automática;backlog
+35;Cadastros;Gerenciar cadastro de empresas;empresas.html;Implementar busca por CNPJ/nome;;Design;0;eudemar;2;Alta;G;Autocomplete;backlog
+36;Cadastros;Gerenciar cadastro de empresas;empresas.html;Integrar com backend;;Integração Backend;0;eudemar;2;Alta;G;API endpoints;backlog
+37;Cadastros;Gerenciar cadastro de profissionais;profissionais.html;Criar listagem de profissionais;https://winaudio.atlassian.net/wiki/spaces/WW2/pages/167313416/Detalhamento+para+listagem+de+profissionais;Layout;1;gabriel;2;Alta;M;Interface responsiva;backlog
+38;Cadastros;Gerenciar cadastro de profissionais;profissionais.html;Implementar formulário de profissional;https://winaudio.atlassian.net/wiki/spaces/WW2/pages/167018826/Detalhamento+para+cadastro+de+profissionais;Design;2;gabriel;2;Alta;M;CRM, especialidade, horários;backlog
+39;Cadastros;Gerenciar cadastro de profissionais;profissionais.html;Criar validações CRM;https://winaudio.atlassian.net/wiki/spaces/WW2/pages/167378976/Detalhamento+para+valida+es+de+CRM+e+CRFa;Validação;2;gabriel;2;Alta;M;Validação por estado;backlog
+40;Cadastros;Gerenciar cadastro de profissionais;profissionais.html;Implementar controle de acesso;Aguardando definição da relação entre Profissional e usuário, permissões provavelmente serão feitas por usuário. Talvez o profissional seja um tipo de usuário no sistema;Design;4;gabriel;2;Alta;M;Níveis de permissão;backlog
+41;Cadastros;Gerenciar cadastro de profissionais;profissionais.html;Integrar com API;https://winaudio.atlassian.net/wiki/spaces/WW2/pages/167313447/Detalhamento+para+integrar+com+API;Integração Backend;2;gabriel;2;Alta;M;CRUD completo;backlog
+67;Parâmetros;Configurar audiômetro;audiometro.html;Criar interface de configuração;https://winaudio.atlassian.net/wiki/spaces/WW2/pages/168624129/Detalhamento+para+criar+a+interface+de+cadastro+dos+audi+metros.;Layout;2;gabriel;2;Alta;M;Formulário técnico complexo;backlog
+68;Parâmetros;Configurar audiômetro;audiometro.html;Implementar campos especializados;Definido na criação da interface.;Design;2;gabriel;2;Alta;M;Frequências, intensidades, calibração;backlog
+69;Parâmetros;Configurar audiômetro;audiometro.html;Criar validações técnicas;https://winaudio.atlassian.net/wiki/spaces/WW2/pages/168558605/Detalhamento+para+valida+es+t+cnicas.;Validação;2;gabriel;2;Alta;M;Limites técnicos, ranges;backlog
+70;Parâmetros;Configurar audiômetro;audiometro.html;Implementar presets de configuração;https://winaudio.atlassian.net/wiki/spaces/WW2/pages/168591377/Detalhamento+de+configura+es+pr+-definidas;Design;2;gabriel;2;Alta;M;Configurações pré-definidas;backlog
+71;Parâmetros;Configurar audiômetro;audiometro.html;Integrar com backend;Salvar dados em banco;Integração Backend;1;gabriel;2;Alta;M;Salvar configurações;backlog
+82;Parâmetros;Configurar anamnese;anamnese.html;Criar form builder médico;https://winaudio.atlassian.net/wiki/spaces/WW2/pages/167378948/Criar+anamnese;Layout;3;fernando;2;Média;M;Interface configurável;backlog
+83;Parâmetros;Configurar anamnese;anamnese.html;Implementar campos dinâmicos;https://winaudio.atlassian.net/wiki/spaces/WW2/pages/167378948/Criar+anamnese;Design;3;fernando;2;Média;M;Add/remove campos;backlog
+84;Parâmetros;Configurar anamnese;anamnese.html;Criar templates de anamnese;Uma lista de definições padrão para as anamneses;Design;2;fernando;2;Média;M;Templates pré-definidos;backlog
+85;Parâmetros;Configurar anamnese;anamnese.html;Implementar validações condicionais;Validar se tem nome, se nome duplicado, se possui seções sem perguntas;Validação;2;fernando;2;Média;M;Campos dependentes;backlog
+86;Parâmetros;Configurar anamnese;anamnese.html;Integrar com API;Salvar as configurações no Supabase;Integração Backend;1;fernando;2;Média;M;Salvar templates;backlog
+112;Exames;Cadastrar novo exame;cadastro-novo.html;Criar formulário inicial;https://winaudio.atlassian.net/wiki/spaces/WW2/pages/167379001/Cadastro+de+Novo+exame;Layout;2;fernando;2;Alta;G;Form wizard;backlog
+113;Exames;Cadastrar novo exame;cadastro-novo.html;Implementar seleção de paciente;Criando novo exame pela tela de exames, listar pacientes ativos. E/OU iniciar criação de exame pela tela de agenda ou busca/lista de pacientes;Design;1;fernando;2;Alta;G;Autocomplete avançado;backlog
+114;Exames;Cadastrar novo exame;cadastro-novo.html;Criar validações do formulário;Validar campos obrigatórios, previstos em https://winaudio.atlassian.net/wiki/spaces/WW2/pages/167379001/Cadastro+de+Novo+exame;Validação;3;fernando;2;Alta;G;Campos obrigatórios;backlog
+115;Exames;Cadastrar novo exame;cadastro-novo.html;Implementar templates de exame;Buscar valores padrão nas configurações de exame/equipamento/empresas/etc. e preencher na tela;Design;2;fernando;2;Alta;G;Aplicar padrões;backlog
+116;Exames;Cadastrar novo exame;cadastro-novo.html;Integrar com API;Salvar dados em banco;Integração Backend;1;fernando;2;Alta;G;Criar novo exame;backlog
+117;Exames;Template base de exame;cadastroexame.html;Criar layout padrão;Criar um layout para telas de cadastros de exames, definindo Interface.;Layout;2;fernando;2;Média;M;Template reutilizável;backlog
+118;Exames;Template base de exame;cadastroexame.html;Implementar componentes comuns;Criar os componentes base para telas  de exame;Design;2;fernando;2;Média;M;Headers, navegação, tabs;backlog
+119;Exames;Template base de exame;cadastroexame.html;Criar sistema de navegação;predefinido em outra tarefa, usará a navegação;Design;2;fernando;2;Média;M;Entre seções do exame;backlog
+120;Exames;Template base de exame;cadastroexame.html;Implementar estado compartilhado;navegação entre telas de um exame deve manter os dados persistentes;Integração Backend;4;fernando;2;Média;M;Context API;backlog
+121;Exames;Template base de exame;cadastroexame.html;Configurar auto-save;Salvar dados automaticamente enquanto navega entre telas de exame;Design;3;fernando;2;Média;M;Salvar automaticamente;backlog
+137;Exames;Análise da via aérea;via-aerea-original.html;Criar interface de entrada;front-end via area/campos/tabela;Layout;2;vinicius;2;Alta;XG;Tabelas de frequência;backlog
+138;Exames;Análise da via aérea;via-aerea-original.html;Implementar tabelas de limiares;"Campos de ""valor""";Design;2;vinicius;2;Alta;XG;Input por frequência/orelha;backlog
+139;Exames;Análise da via aérea;via-aerea-original.html;Criar controles de mascaramento;"Campos de ""min"" e ""max""";Design;2;vinicius;2;Alta;XG;Masking avançado;backlog
+140;Exames;Análise da via aérea;via-aerea-original.html;Implementar validações audiométricas;De acordo com o resultado do exame;Validação;4;vinicius;2;Alta;XG;Limites técnicos;backlog
+141;Exames;Análise da via aérea;via-aerea-original.html;Criar análise automática;Grafico com a analise da via aerea;Design;5;vinicius;2;Alta;XG;Classificação automática;backlog
+142;Exames;Análise da via aérea;via-aerea-original.html;Integrar com backend;;Integração Backend;2;vinicius;2;Alta;XG;Salvar limiares;backlog
+177;Gráficos;Visualizar audiometria em gráfico;grafico-audiometria-original.html;Criar componente de audiograma;Front-end do grafico audiograma;Layout;4;vinicius;2;Alta;XG;Canvas/SVG chart;backlog
+178;Gráficos;Visualizar audiometria em gráfico;grafico-audiometria-original.html;Implementar plotagem de limiares;Clica no grafico e muda o valor;Design;3;vinicius;2;Alta;XG;Plot points/lines;backlog
+179;Gráficos;Visualizar audiometria em gráfico;grafico-audiometria-original.html;Criar controles de visualização;Marcar nas checkboxes o que deseja ver;Design;2;vinicius;2;Alta;XG;Show/hide curves;backlog
+180;Gráficos;Visualizar audiometria em gráfico;grafico-audiometria-original.html;Implementar símbolos padrão;Implementar os simbolos no grafico;Design;2;vinicius;2;Alta;XG;Símbolos audiométricos;backlog
+181;Gráficos;Visualizar audiometria em gráfico;grafico-audiometria-original.html;Criar análise automática;;Design;3;vinicius;2;Alta;XG;Classificação perda;backlog
+182;Gráficos;Visualizar audiometria em gráfico;grafico-audiometria-original.html;Implementar export/print;Botoes de PDF, etc...;Design;2;vinicius;2;Alta;XG;PDF/Image export;backlog
+183;Gráficos;Visualizar audiometria em gráfico;grafico-audiometria-original.html;Integrar com dados do exame;;Integração Backend;4;vinicius;2;Alta;XG;Load exam data;backlog
