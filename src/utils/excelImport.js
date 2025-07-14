@@ -72,9 +72,9 @@ export const importExcelFile = async (file) => {
           estimativaHoras: parseFloat(row['Estimativa em horas'] || row.EstimativaHoras || 0),
           horasMedidas: parseFloat(row['Horas medidas'] || row.HorasMedidas || 0),
           status: String(row.Status || 'Backlog'),
-          // Reestimativas diárias (10 dias de sprint)
+          // Reestimativas diárias (10 dias de sprint) - inicializar com estimativa inicial se não existir
           reestimativas: Array.from({ length: 10 }, (_, i) => 
-            parseFloat(row[`Dia${i + 1}`] || row[`dia${i + 1}`] || 0)
+            parseFloat(row[`Dia${i + 1}`] || row[`dia${i + 1}`] || row['Estimativa (h)'] || row.Estimativa || 0)
           ),
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()

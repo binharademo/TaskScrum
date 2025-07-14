@@ -153,8 +153,14 @@ const TableView = ({ tasks, onTasksUpdate }) => {
         
         const newValue = parseFloat(value) || 0;
         
-        // Definir o valor para o dia atual
-        newReestimativas[dayIndex] = newValue;
+        // Se for Dia 1 (índice 0), atualizar a estimativa inicial
+        let updatedTask = { ...task };
+        if (dayIndex === 0) {
+          updatedTask.estimativa = newValue;
+        } else {
+          // Para outros dias, definir o valor nas reestimativas
+          newReestimativas[dayIndex] = newValue;
+        }
         
         // Se o valor for zero, zerar todas as posições seguintes
         if (newValue === 0) {
@@ -169,7 +175,7 @@ const TableView = ({ tasks, onTasksUpdate }) => {
         }
         
         return { 
-          ...task, 
+          ...updatedTask, 
           reestimativas: newReestimativas, 
           updatedAt: new Date().toISOString() 
         };
@@ -243,9 +249,16 @@ const TableView = ({ tasks, onTasksUpdate }) => {
       // Labels como "Dia 0", "Dia 1", etc.
       labels.push(`Dia ${i}`);
 
-      // Linha ideal - decréscimo linear baseado nos dias do sprint original
-      const idealRemaining = totalHours - (totalHours / sprintDays) * i;
-      idealLine.push(Math.max(0, idealRemaining));
+      // Linha ideal - usar mesma lógica da LINHA IDEAL da tabela
+      if (i === 0) {
+        idealLine.push(totalHours);
+      } else {
+        // Capacidade acumulada até o dia i
+        const capacidadeAcumulada = teamCapacityPerDay * i;
+        // Trabalho restante = total inicial - capacidade consumida
+        const trabalhoRestante = Math.max(0, totalHours - capacidadeAcumulada);
+        idealLine.push(trabalhoRestante);
+      }
 
       // Linha real - usar exatamente o mesmo cálculo da tabela
       if (i === 0) {
@@ -255,10 +268,31 @@ const TableView = ({ tasks, onTasksUpdate }) => {
       } else {
         const dayIndex = i - 1; // Dia 1 = index 0, Dia 2 = index 1, etc.
         
-        // Usar exatamente o mesmo cálculo da linha de totais
-        const sprintTotals = calculateColumnTotals(sprintTasks);
-        const totalRemainingHours = dayIndex < sprintTotals.dias.length ? sprintTotals.dias[dayIndex] : 0;
-        actualLine.push(Math.max(0, totalRemainingHours));
+        // Calcular trabalho restante baseado nas tarefas finalizadas
+        let workRemaining = totalHours;
+        
+        // Para cada tarefa, verificar se foi finalizada até este dia
+        sprintTasks.forEach(task => {
+          const taskWithReestimativas = ensureReestimativas(task);
+          const estimativaOriginal = task.estimativa || 0;
+          
+          // Verificar se a tarefa foi finalizada até este dia
+          for (let d = 0; d <= dayIndex && d < 10; d++) {
+            const dayValue = d === 0 
+              ? task.estimativa || 0
+              : (taskWithReestimativas.reestimativas && taskWithReestimativas.reestimativas[d] !== undefined 
+                  ? taskWithReestimativas.reestimativas[d] 
+                  : task.estimativa || 0);
+            
+            // Se o valor chegou a zero neste dia, a tarefa foi concluída
+            if (dayValue === 0 && d <= dayIndex) {
+              workRemaining -= estimativaOriginal;
+              break; // Tarefa já foi contabilizada como concluída
+            }
+          }
+        });
+        
+        actualLine.push(Math.max(0, workRemaining));
         
         // Linha de capacidade - decréscimo baseado na capacidade da equipe
         const capacityRemaining = totalHours - (teamCapacityPerDay * i);
@@ -278,7 +312,7 @@ const TableView = ({ tasks, onTasksUpdate }) => {
           tension: 0.1
         },
         {
-          label: 'Reestimativas Reais',
+          label: 'Executado',
           data: actualLine,
           borderColor: 'rgb(255, 99, 132)',
           backgroundColor: 'rgba(255, 99, 132, 0.2)',
@@ -391,9 +425,12 @@ const TableView = ({ tasks, onTasksUpdate }) => {
     
     // Verificar se algum dia tem valor zero
     for (let i = 0; i < 10; i++) {
-      const dayValue = taskWithReestimativas.reestimativas && taskWithReestimativas.reestimativas[i] !== undefined 
-        ? taskWithReestimativas.reestimativas[i] 
-        : task.estimativa || 0;
+      // Dia 1 (índice 0) sempre usa a estimativa inicial
+      const dayValue = i === 0 
+        ? task.estimativa || 0
+        : (taskWithReestimativas.reestimativas && taskWithReestimativas.reestimativas[i] !== undefined 
+            ? taskWithReestimativas.reestimativas[i] 
+            : task.estimativa || 0);
       
       if (dayValue === 0) {
         hasZero = true;
@@ -403,6 +440,58 @@ const TableView = ({ tasks, onTasksUpdate }) => {
     
     // Só retorna a soma se houver pelo menos um zero
     return hasZero ? total : 0;
+  };
+
+  // Calcular trabalho restante por dia (burndown real - decresce conforme tarefas são finalizadas)
+  const calculateExecutado = () => {
+    const totalHours = filteredTasks.reduce((sum, task) => sum + (task.estimativa || 0), 0);
+    const executado = [];
+    
+    for (let dayIndex = 0; dayIndex < 10; dayIndex++) {
+      let trabalhoRestante = totalHours;
+      
+      // Para cada tarefa, verificar se foi finalizada até este dia
+      filteredTasks.forEach(task => {
+        const taskWithReestimativas = ensureReestimativas(task);
+        const estimativaOriginal = task.estimativa || 0;
+        
+        // Verificar se a tarefa foi finalizada até este dia
+        for (let d = 0; d <= dayIndex && d < 10; d++) {
+          const dayValue = d === 0 
+            ? task.estimativa || 0
+            : (taskWithReestimativas.reestimativas && taskWithReestimativas.reestimativas[d] !== undefined 
+                ? taskWithReestimativas.reestimativas[d] 
+                : task.estimativa || 0);
+          
+          // Se o valor chegou a zero neste dia, a tarefa foi concluída
+          if (dayValue === 0 && d <= dayIndex) {
+            trabalhoRestante -= estimativaOriginal;
+            break; // Tarefa já foi contabilizada como concluída
+          }
+        }
+      });
+      
+      executado.push(Math.max(0, trabalhoRestante));
+    }
+    
+    return executado;
+  };
+
+  // Calcular linha ideal baseado na capacidade da equipe
+  const calculateLinhaIdeal = () => {
+    const teamCapacityPerDay = teamConfig.developers * teamConfig.hoursPerDay;
+    const totalHours = filteredTasks.reduce((sum, task) => sum + (task.estimativa || 0), 0);
+    
+    const linhaIdeal = [];
+    for (let i = 0; i < 10; i++) {
+      // Capacidade acumulada até o dia i+1
+      const capacidadeAcumulada = teamCapacityPerDay * (i + 1);
+      // Trabalho restante = total inicial - capacidade consumida
+      const trabalhoRestante = Math.max(0, totalHours - capacidadeAcumulada);
+      linhaIdeal.push(trabalhoRestante);
+    }
+    
+    return linhaIdeal;
   };
 
   // Calcular somatórios por coluna
@@ -419,9 +508,12 @@ const TableView = ({ tasks, onTasksUpdate }) => {
       totals.valorMedido += calculateValorMedido(task);
       
       for (let i = 0; i < 10; i++) {
+        // Dia 1 (índice 0) sempre usa a estimativa inicial
         const dayValue = i === 0 
           ? task.estimativa || 0 
-          : (taskWithReestimativas.reestimativas[i] || 0);
+          : (taskWithReestimativas.reestimativas && taskWithReestimativas.reestimativas[i] !== undefined 
+              ? taskWithReestimativas.reestimativas[i] 
+              : task.estimativa || 0);
         totals.dias[i] += dayValue;
       }
     });
@@ -430,6 +522,8 @@ const TableView = ({ tasks, onTasksUpdate }) => {
   };
 
   const columnTotals = calculateColumnTotals();
+  const linhaIdeal = calculateLinhaIdeal();
+  const executado = calculateExecutado();
   const paginatedTasks = filteredTasks.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   const handleChangePage = (event, newPage) => {
@@ -966,6 +1060,36 @@ const TableView = ({ tasks, onTasksUpdate }) => {
                 {columnTotals.valorMedido ? columnTotals.valorMedido.toFixed(1) : '0.0'}h
               </TableCell>
             </TableRow>
+            {/* Linha Ideal */}
+            <TableRow sx={{ backgroundColor: 'rgba(25, 118, 210, 0.08)', fontWeight: 'bold' }}>
+              <TableCell sx={{ fontWeight: 'bold', fontSize: '0.875rem', color: '#1976d2' }}>LINHA IDEAL</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '0.875rem', color: '#1976d2' }}>
+                {filteredTasks.reduce((sum, task) => sum + (task.estimativa || 0), 0).toFixed(1)}h
+              </TableCell>
+              {Array.from({ length: 10 }, (_, i) => (
+                <TableCell key={i} sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '0.875rem', padding: '8px 2px', color: '#1976d2' }}>
+                  {linhaIdeal[i].toFixed(1)}h
+                </TableCell>
+              ))}
+              <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '0.875rem', color: '#1976d2' }}>
+                -
+              </TableCell>
+            </TableRow>
+            {/* Linha Executado */}
+            <TableRow sx={{ backgroundColor: 'rgba(255, 99, 132, 0.08)', fontWeight: 'bold' }}>
+              <TableCell sx={{ fontWeight: 'bold', fontSize: '0.875rem', color: '#d32f2f' }}>EXECUTADO</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '0.875rem', color: '#d32f2f' }}>
+                {filteredTasks.reduce((sum, task) => sum + (task.estimativa || 0), 0).toFixed(1)}h
+              </TableCell>
+              {Array.from({ length: 10 }, (_, i) => (
+                <TableCell key={i} sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '0.875rem', padding: '8px 2px', color: '#d32f2f' }}>
+                  {executado[i].toFixed(1)}h
+                </TableCell>
+              ))}
+              <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '0.875rem', color: '#d32f2f' }}>
+                {executado[9] ? executado[9].toFixed(1) : '0.0'}h
+              </TableCell>
+            </TableRow>
             {paginatedTasks.map((task) => (
               <TableRow key={task.id} hover>
                 <TableCell sx={{ padding: '8px 12px' }}>
@@ -1039,10 +1163,12 @@ const TableView = ({ tasks, onTasksUpdate }) => {
                 </TableCell>
                 {Array.from({ length: 10 }, (_, i) => {
                   const taskWithReestimativas = ensureReestimativas(task);
-                  // Usar o valor das reestimativas para todos os dias
-                  const currentValue = taskWithReestimativas.reestimativas && taskWithReestimativas.reestimativas[i] !== undefined 
-                    ? taskWithReestimativas.reestimativas[i] 
-                    : task.estimativa || 0;
+                  // Dia 1 (índice 0) sempre usa a estimativa inicial
+                  const currentValue = i === 0 
+                    ? task.estimativa || 0
+                    : (taskWithReestimativas.reestimativas && taskWithReestimativas.reestimativas[i] !== undefined 
+                        ? taskWithReestimativas.reestimativas[i] 
+                        : task.estimativa || 0);
                   
                   return (
                     <TableCell key={i} sx={{ textAlign: 'center', padding: '8px 2px' }}>
