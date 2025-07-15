@@ -96,7 +96,8 @@ const TableView = ({ tasks, onTasksUpdate }) => {
     desenvolvedor: '',
     prioridade: '',
     status: '',
-    epico: ''
+    epico: '',
+    search: ''
   });
   
   const [teamConfig, setTeamConfig] = useState({
@@ -217,7 +218,7 @@ const TableView = ({ tasks, onTasksUpdate }) => {
   };
 
   const clearFilters = () => {
-    setFilters({ sprint: '', desenvolvedor: '', prioridade: '', status: '', epico: '' });
+    setFilters({ sprint: '', desenvolvedor: '', prioridade: '', status: '', epico: '', search: '' });
   };
 
   const getUniqueValues = (field) => {
@@ -436,7 +437,16 @@ const TableView = ({ tasks, onTasksUpdate }) => {
     
     Object.keys(filters).forEach(key => {
       if (filters[key]) {
-        filtered = filtered.filter(task => task[key] === filters[key]);
+        if (key === 'search') {
+          const searchTerm = filters[key].toLowerCase();
+          filtered = filtered.filter(task => 
+            Object.values(task).some(value => 
+              value && value.toString().toLowerCase().includes(searchTerm)
+            )
+          );
+        } else {
+          filtered = filtered.filter(task => task[key] === filters[key]);
+        }
       }
     });
     
@@ -1044,6 +1054,15 @@ const TableView = ({ tasks, onTasksUpdate }) => {
               <MenuItem key={status} value={status}>{status}</MenuItem>
             ))}
           </TextField>
+          
+          <TextField
+            label="Buscar em todos os campos"
+            value={filters.search}
+            onChange={(e) => handleFilterChange('search', e.target.value)}
+            size="small"
+            sx={{ minWidth: 200 }}
+            placeholder="Digite para buscar..."
+          />
           
           <IconButton onClick={clearFilters} size="small">
             <ClearIcon />

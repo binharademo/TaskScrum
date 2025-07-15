@@ -843,7 +843,8 @@ const SimpleKanban = ({ tasks, onTasksUpdate }) => {
     sprint: '',
     desenvolvedor: '',
     prioridade: '',
-    epico: ''
+    epico: '',
+    search: ''
   });
 
   useEffect(() => {
@@ -860,6 +861,14 @@ const SimpleKanban = ({ tasks, onTasksUpdate }) => {
     }
     if (filters.epico) {
       filtered = filtered.filter(task => task.epico === filters.epico);
+    }
+    if (filters.search) {
+      const searchTerm = filters.search.toLowerCase();
+      filtered = filtered.filter(task => 
+        Object.values(task).some(value => 
+          value && value.toString().toLowerCase().includes(searchTerm)
+        )
+      );
     }
     
     setFilteredTasks(filtered);
@@ -900,7 +909,7 @@ const SimpleKanban = ({ tasks, onTasksUpdate }) => {
   };
 
   const clearFilters = () => {
-    setFilters({ sprint: '', desenvolvedor: '', prioridade: '', epico: '' });
+    setFilters({ sprint: '', desenvolvedor: '', prioridade: '', epico: '', search: '' });
   };
 
   const getUniqueValues = (field) => {
@@ -971,6 +980,15 @@ const SimpleKanban = ({ tasks, onTasksUpdate }) => {
               <MenuItem key={priority} value={priority}>{priority}</MenuItem>
             ))}
           </TextField>
+          
+          <TextField
+            label="Buscar em todos os campos"
+            value={filters.search}
+            onChange={(e) => handleFilterChange('search', e.target.value)}
+            size="small"
+            sx={{ minWidth: 200 }}
+            placeholder="Digite para buscar..."
+          />
           
           <IconButton onClick={clearFilters} size="small">
             <ClearIcon />
