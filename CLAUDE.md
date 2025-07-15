@@ -431,3 +431,310 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
 ---
 
 **Status**: ✅ Totalmente funcional - Sistema de abas implementado, análise preditiva ativa, previsões dinâmicas funcionando, layout reorganizado e otimizado.
+
+---
+
+## 🔍 BUSCA TEXTUAL NOS FILTROS - 15/07/2025
+
+### Funcionalidade Implementada
+
+#### 1. **Campo de Busca Universal**
+- **Campo textual** "Buscar em todos os campos" adicionado nas barras de filtros
+- **Busca case-insensitive** em todos os campos das tarefas
+- **Integração perfeita** com filtros existentes (épico, sprint, desenvolvedor, status)
+- **Placeholder** "Digite para buscar..." para orientação do usuário
+
+#### 2. **Implementação Técnica**
+- **Função de busca** usando `Object.values()` para percorrer todos os campos
+- **Filtragem em tempo real** conforme digitação
+- **Limpeza automática** via botão de filtros
+- **Largura mínima** de 200px para boa usabilidade
+
+#### 3. **Locais Implementados**
+- **Kanban (SimpleKanban.js)** - Filtra cards em tempo real
+- **TableView (TableView.js)** - Filtra linhas da tabela em tempo real
+
+### Código Implementado
+
+#### Estado dos Filtros
+```javascript
+const [filters, setFilters] = useState({
+  sprint: '',
+  desenvolvedor: '',
+  prioridade: '',
+  status: '',
+  epico: '',
+  search: ''  // ← Novo campo
+});
+```
+
+#### Função de Busca
+```javascript
+if (filters.search) {
+  const searchTerm = filters.search.toLowerCase();
+  filtered = filtered.filter(task => 
+    Object.values(task).some(value => 
+      value && value.toString().toLowerCase().includes(searchTerm)
+    )
+  );
+}
+```
+
+#### Interface do Campo
+```javascript
+<TextField
+  label="Buscar em todos os campos"
+  value={filters.search}
+  onChange={(e) => handleFilterChange('search', e.target.value)}
+  size="small"
+  sx={{ minWidth: 200 }}
+  placeholder="Digite para buscar..."
+/>
+```
+
+### Arquivos Modificados
+
+#### `/src/components/SimpleKanban.js`
+- **Linha 847**: Adicionado campo `search` ao estado
+- **Linha 865-873**: Implementada lógica de busca textual
+- **Linha 912**: Atualizado `clearFilters` para incluir search
+- **Linha 984-992**: Adicionado campo de busca na UI
+
+#### `/src/components/TableView.js`
+- **Linha 100**: Adicionado campo `search` ao estado
+- **Linha 221**: Atualizado `clearFilters` para incluir search
+- **Linha 440-449**: Implementada lógica de busca textual
+- **Linha 1058-1066**: Adicionado campo de busca na UI
+
+### Como Usar
+
+1. **Acesse** qualquer tela (Kanban ou TableView)
+2. **Localize** o campo "Buscar em todos os campos" na barra de filtros
+3. **Digite** qualquer termo (ex: "backend", "João", "crítica")
+4. **Veja** a filtragem em tempo real
+5. **Combine** com outros filtros para busca mais específica
+
+### Exemplos de Busca
+
+- **"backend"** → Encontra tarefas com "backend" em qualquer campo
+- **"João"** → Encontra tarefas do desenvolvedor João
+- **"crítica"** → Encontra tarefas com prioridade crítica
+- **"API"** → Encontra tarefas relacionadas a API
+- **"bug"** → Encontra tarefas com "bug" em descrição/observações
+
+### Commit Realizado
+```
+feat: Implementar campo de busca textual nos filtros
+- Adicionar campo "Buscar em todos os campos" na barra de filtros do Kanban
+- Adicionar campo "Buscar em todos os campos" na barra de filtros da TableView
+- Implementar busca case-insensitive em todos os campos das tarefas
+- Integrar busca textual com filtros existentes
+```
+
+### Status: ✅ **IMPLEMENTADO E COMMITADO**
+- Busca textual funcionando em ambas as telas
+- Integração perfeita com filtros existentes
+- Interface intuitiva e responsiva
+- Documentação atualizada
+
+**Status**: ✅ Totalmente funcional - Sistema de abas, análise preditiva, previsões dinâmicas e busca textual implementados e otimizados.
+
+---
+
+## ⏱️ SISTEMA DE TEMPO GASTO E TAXA DE ERRO - 15/07/2025
+
+### Funcionalidades Implementadas
+
+#### 1. **Validação Obrigatória de Tempo Gasto**
+- **Bloqueio automático** ao tentar mover tarefa para "Done" sem tempo gasto
+- **Modal de validação** com campos obrigatórios
+- **Impossível finalizar** tarefa sem preencher dados
+
+#### 2. **Modal de Validação TimeValidationModal**
+- **Título claro**: "Validação Obrigatória - Tempo Gasto"
+- **Alerta warning** mostrando nome da tarefa
+- **Campo obrigatório**: "Tempo Gasto (horas)" - numérico com decimais
+- **Cálculo automático**: Taxa de erro calculada em tempo real
+- **Validação condicional**: Campo "Motivo do Erro" obrigatório se taxa > 20%
+- **Feedback visual**: Verde para taxa ≤ 20%, vermelho para > 20%
+
+#### 3. **Cálculo Automático da Taxa de Erro**
+- **Fórmula**: `((tempoGasto / estimativa - 1) * 100)`
+- **Valor mínimo**: 0% (não exibe taxas negativas)
+- **Indicação visual**: Cores baseadas no nível de erro
+- **Salvamento automático**: Após preenchimento do tempo gasto
+
+#### 4. **Novos Campos no Modelo de Dados**
+- **tempoGasto**: Tempo efetivamente gasto (number)
+- **taxaErro**: Taxa de erro calculada (number)
+- **tempoGastoValidado**: Flag de validação (boolean)
+- **motivoErro**: Explicação para taxa > 20% (string)
+
+#### 5. **Modal de Detalhes Atualizado**
+- **Nova seção**: "Tempo Gasto e Taxa de Erro"
+- **Layout em grid**: 2 colunas responsivas
+- **Indicações visuais**: Cores baseadas na taxa de erro
+- **Alertas contextuais**: Status de validação e orientações
+- **Motivo do erro**: Destacado quando presente
+
+### Código Implementado
+
+#### Novos Campos no Modelo
+```javascript
+// src/utils/sampleData.js
+{
+  tempoGasto: null,
+  taxaErro: null,
+  tempoGastoValidado: false,
+  motivoErro: null
+}
+```
+
+#### Validação Obrigatória
+```javascript
+// src/components/SimpleKanban.js
+const handleStatusChange = (taskId, newStatus) => {
+  if (newStatus === 'Done') {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task.tempoGastoValidado || task.tempoGasto === null) {
+      setTimeValidationModal({
+        open: true,
+        task: task
+      });
+      return;
+    }
+  }
+  // Continuar com mudança normal...
+};
+```
+
+#### Cálculo da Taxa de Erro
+```javascript
+const taxaErro = tempoGasto && task.estimativa ? 
+  ((tempoGasto / task.estimativa - 1) * 100) : 0;
+const taxaErroPositiva = Math.max(0, taxaErro);
+```
+
+#### Modal de Validação
+```javascript
+const TimeValidationModal = ({ open, task, onClose, onSave }) => {
+  // Estados para tempo gasto e motivo do erro
+  // Validação condicional baseada na taxa de erro
+  // Interface responsiva com feedback visual
+  // Botão habilitado apenas quando válido
+};
+```
+
+### Interface do Modal de Validação
+
+#### Elementos da Interface:
+1. **Título**: "Validação Obrigatória - Tempo Gasto"
+2. **Alerta**: Warning com nome da tarefa
+3. **Estimativa**: Exibição da estimativa inicial
+4. **Tempo Gasto**: Campo numérico obrigatório (min: 0.1, step: 0.1)
+5. **Taxa de Erro**: Campo calculado automaticamente (readonly)
+6. **Motivo do Erro**: Campo obrigatório se taxa > 20%
+7. **Dica**: Orientação sobre a importância do preenchimento
+8. **Botões**: Cancelar e "Finalizar Tarefa"
+
+#### Validação do Formulário:
+```javascript
+const isValid = tempoGasto && (taxaErroPositiva <= 20 || motivoErro.trim());
+```
+
+### Seção no Modal de Detalhes
+
+#### Layout da Seção:
+```javascript
+<Box>
+  <Typography variant="subtitle1" gutterBottom fontWeight="bold">
+    Tempo Gasto e Taxa de Erro
+  </Typography>
+  <Paper sx={{ p: 2 }}>
+    <Grid container spacing={2}>
+      <Grid item xs={12} sm={6}>
+        <Typography>Tempo Gasto: {tempoGasto}h</Typography>
+      </Grid>
+      <Grid item xs={12} sm={6}>
+        <Typography color={taxaErro > 20 ? 'error.main' : 'success.main'}>
+          Taxa de Erro: {taxaErro}%
+        </Typography>
+      </Grid>
+    </Grid>
+    
+    {/* Motivo do erro se presente */}
+    {/* Alertas de validação */}
+    {/* Orientações contextuais */}
+  </Paper>
+</Box>
+```
+
+### Fluxo de Uso
+
+#### Processo Completo:
+1. **Usuário** tenta mover card para "Done"
+2. **Sistema** verifica se tempo gasto foi validado
+3. **Modal** abre automaticamente se não validado
+4. **Usuário** preenche tempo gasto
+5. **Sistema** calcula taxa de erro automaticamente
+6. **Validação** condicional para motivo se taxa > 20%
+7. **Salvamento** dos dados e finalização da tarefa
+8. **Visualização** dos dados no modal de detalhes
+
+### Arquivos Modificados
+
+#### `/src/utils/sampleData.js`
+- **Linhas 62-66**: Adicionados novos campos ao modelo de dados
+- **Compatibilidade**: Mantém estrutura existente
+
+#### `/src/components/SimpleKanban.js`
+- **Linhas 28, 910**: Adicionado import Alert e estado timeValidationModal
+- **Linhas 398-456**: Nova seção no modal de detalhes
+- **Linhas 942-954**: Validação obrigatória no handleStatusChange
+- **Linhas 1000-1036**: Função handleTimeValidationSave
+- **Linhas 1076-1190**: Componente TimeValidationModal completo
+
+### Validações e Feedback
+
+#### Validações Implementadas:
+- **Campo obrigatório**: Tempo gasto deve ser > 0
+- **Taxa de erro**: Calculada automaticamente
+- **Motivo obrigatório**: Para taxas > 20%
+- **Botão habilitado**: Apenas quando formulário válido
+
+#### Feedback Visual:
+- **Verde**: Taxa de erro ≤ 20%
+- **Vermelho**: Taxa de erro > 20%
+- **Alerta warning**: Orientação sobre obrigatoriedade
+- **Dica**: Importância do preenchimento
+
+### Status dos Testes
+
+#### Cenários Testados:
+- ✅ Tentativa de mover para Done sem tempo gasto
+- ✅ Preenchimento do modal de validação
+- ✅ Cálculo automático da taxa de erro
+- ✅ Validação para taxa > 20%
+- ✅ Salvamento dos dados
+- ✅ Visualização no modal de detalhes
+
+### Commit Realizado
+```
+feat: Implementar sistema de tempo gasto e taxa de erro obrigatório
+- Adicionar campos tempoGasto, taxaErro, tempoGastoValidado e motivoErro
+- Implementar validação obrigatória ao mover tarefa para Done
+- Criar modal TimeValidationModal para preenchimento obrigatório
+- Implementar cálculo automático da taxa de erro baseado na estimativa
+- Adicionar campo obrigatório "motivo do erro" para taxas acima de 20%
+- Atualizar modal de detalhes com seção "Tempo Gasto e Taxa de Erro"
+```
+
+### Status: ✅ **IMPLEMENTADO E COMMITADO**
+- Validação obrigatória funcionando
+- Modal de preenchimento completo
+- Cálculo automático da taxa de erro
+- Interface visual intuitiva
+- Dados salvos e persistidos
+- Documentação atualizada
+
+**Status**: ✅ Totalmente funcional - Sistema de abas, análise preditiva, previsões dinâmicas, busca textual e validação de tempo gasto implementados e otimizados.
