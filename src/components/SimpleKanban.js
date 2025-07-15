@@ -24,7 +24,8 @@ import {
   Stack,
   FormControl,
   InputLabel,
-  Select
+  Select,
+  Alert
 } from '@mui/material';
 import {
   FilterList as FilterIcon,
@@ -391,6 +392,66 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
                   `${((task.horasMedidas || 0) / task.estimativa * 100).toFixed(1)}% concluído`
                 }
               </Typography>
+            </Paper>
+          </Box>
+
+          {/* Tempo Gasto e Taxa de Erro */}
+          <Box>
+            <Typography variant="subtitle1" gutterBottom fontWeight="bold">
+              Tempo Gasto e Taxa de Erro
+            </Typography>
+            <Paper sx={{ p: 2 }}>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Tempo Gasto:
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      {task.tempoGasto ? `${task.tempoGasto}h` : 'Não informado'}
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Taxa de Erro:
+                    </Typography>
+                    <Typography 
+                      variant="body2" 
+                      fontWeight="bold"
+                      color={task.taxaErro > 20 ? 'error.main' : 'success.main'}
+                    >
+                      {task.taxaErro ? `${task.taxaErro.toFixed(1)}%` : 'Não calculada'}
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+              
+              {task.motivoErro && (
+                <Box sx={{ mt: 2, p: 1, bgcolor: 'warning.light', borderRadius: 1 }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    <strong>Motivo da Taxa de Erro:</strong>
+                  </Typography>
+                  <Typography variant="body2">
+                    {task.motivoErro}
+                  </Typography>
+                </Box>
+              )}
+              
+              {task.status === 'Done' && !task.tempoGastoValidado && (
+                <Box sx={{ mt: 2, p: 1, bgcolor: 'error.light', borderRadius: 1 }}>
+                  <Typography variant="body2" color="error.main">
+                    ⚠️ Tarefa finalizada sem validação de tempo gasto
+                  </Typography>
+                </Box>
+              )}
+              
+              {task.status !== 'Done' && (
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                  💡 O tempo gasto será solicitado ao finalizar a tarefa
+                </Typography>
+              )}
             </Paper>
           </Box>
 
@@ -846,6 +907,10 @@ const SimpleKanban = ({ tasks, onTasksUpdate }) => {
     epico: '',
     search: ''
   });
+  const [timeValidationModal, setTimeValidationModal] = useState({
+    open: false,
+    task: null
+  });
 
   useEffect(() => {
     let filtered = tasks;
@@ -875,6 +940,18 @@ const SimpleKanban = ({ tasks, onTasksUpdate }) => {
   }, [tasks, filters]);
 
   const handleStatusChange = (taskId, newStatus) => {
+    // Verificar se está tentando mover para Done sem tempo gasto validado
+    if (newStatus === 'Done') {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task.tempoGastoValidado || task.tempoGasto === null) {
+        setTimeValidationModal({
+          open: true,
+          task: task
+        });
+        return;
+      }
+    }
+    
     const updatedTasks = tasks.map(task => {
       if (task.id === taskId) {
         const now = new Date().toISOString();
@@ -918,6 +995,41 @@ const SimpleKanban = ({ tasks, onTasksUpdate }) => {
 
   const getTasksByStatus = (status) => {
     return filteredTasks.filter(task => task.status === status);
+  };
+
+  const calculateErrorRate = (estimativa, tempoGasto) => {
+    if (!tempoGasto || !estimativa) return 0;
+    const errorRate = ((tempoGasto / estimativa - 1) * 100);
+    return Math.max(0, errorRate);
+  };
+
+  const handleTimeValidationSave = (updatedTask) => {
+    const now = new Date().toISOString();
+    const taskWithTimeData = {
+      ...updatedTask,
+      tempoGastoValidado: true,
+      status: 'Done',
+      updatedAt: now,
+      statusChangedAt: now
+    };
+
+    // Adicionar movimento ao histórico
+    if (!taskWithTimeData.movements) {
+      taskWithTimeData.movements = [];
+    }
+    taskWithTimeData.movements.push({
+      timestamp: now,
+      from: updatedTask.status,
+      to: 'Done',
+      userId: 'user'
+    });
+
+    const updatedTasks = tasks.map(task => 
+      task.id === updatedTask.id ? taskWithTimeData : task
+    );
+    
+    onTasksUpdate(updatedTasks);
+    setTimeValidationModal({ open: false, task: null });
   };
 
   return (
@@ -1009,7 +1121,131 @@ const SimpleKanban = ({ tasks, onTasksUpdate }) => {
           </Grid>
         ))}
       </Grid>
+      
+      <TimeValidationModal
+        open={timeValidationModal.open}
+        task={timeValidationModal.task}
+        onClose={() => setTimeValidationModal({ open: false, task: null })}
+        onSave={handleTimeValidationSave}
+      />
     </Box>
+  );
+};
+
+// Modal de validação de tempo gasto
+const TimeValidationModal = ({ open, task, onClose, onSave }) => {
+  const [tempoGasto, setTempoGasto] = useState('');
+  const [motivoErro, setMotivoErro] = useState('');
+
+  useEffect(() => {
+    if (task) {
+      setTempoGasto(task.tempoGasto || '');
+      setMotivoErro(task.motivoErro || '');
+    }
+  }, [task]);
+
+  if (!task) return null;
+
+  const taxaErro = tempoGasto && task.estimativa ? 
+    ((tempoGasto / task.estimativa - 1) * 100) : 0;
+  const taxaErroPositiva = Math.max(0, taxaErro);
+
+  const handleSave = () => {
+    const updatedTask = {
+      ...task,
+      tempoGasto: parseFloat(tempoGasto),
+      taxaErro: taxaErroPositiva,
+      motivoErro: taxaErroPositiva > 20 ? motivoErro : null
+    };
+    onSave(updatedTask);
+    setTempoGasto('');
+    setMotivoErro('');
+  };
+
+  const isValid = tempoGasto && (taxaErroPositiva <= 20 || motivoErro.trim());
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="h6">Validação Obrigatória - Tempo Gasto</Typography>
+        </Box>
+      </DialogTitle>
+      <DialogContent>
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Para finalizar a tarefa <strong>"{task.atividade}"</strong>, é obrigatório informar o tempo gasto.
+        </Alert>
+        
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            Estimativa inicial: {task.estimativa}h
+          </Typography>
+        </Box>
+        
+        <TextField
+          fullWidth
+          required
+          type="number"
+          label="Tempo Gasto (horas)"
+          value={tempoGasto}
+          onChange={(e) => setTempoGasto(e.target.value)}
+          sx={{ mb: 2 }}
+          inputProps={{ min: 0.1, step: 0.1 }}
+          helperText="Informe o tempo efetivamente gasto na tarefa"
+        />
+        
+        <TextField
+          fullWidth
+          label="Taxa de Erro Calculada"
+          value={`${taxaErroPositiva.toFixed(1)}%`}
+          InputProps={{ readOnly: true }}
+          sx={{ 
+            mb: 2,
+            '& .MuiInputBase-input': { 
+              color: taxaErroPositiva > 20 ? 'error.main' : 'success.main',
+              fontWeight: 'bold'
+            }
+          }}
+          helperText={taxaErroPositiva > 20 ? 
+            'Taxa de erro elevada - necessário explicar o motivo' : 
+            'Taxa de erro dentro do esperado'
+          }
+        />
+        
+        {taxaErroPositiva > 20 && (
+          <TextField
+            fullWidth
+            required
+            multiline
+            rows={3}
+            label="Motivo da Taxa de Erro Elevada"
+            value={motivoErro}
+            onChange={(e) => setMotivoErro(e.target.value)}
+            placeholder="Explique o motivo da taxa de erro (complexidade imprevista, mudanças de requisitos, bugs, etc.)"
+            helperText="Obrigatório para taxas de erro acima de 20%"
+          />
+        )}
+        
+        <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            💡 <strong>Dica:</strong> O tempo gasto ajuda a melhorar estimativas futuras e identificar padrões de trabalho.
+          </Typography>
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} color="inherit">
+          Cancelar
+        </Button>
+        <Button 
+          onClick={handleSave} 
+          variant="contained"
+          disabled={!isValid}
+          sx={{ minWidth: 140 }}
+        >
+          Finalizar Tarefa
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 

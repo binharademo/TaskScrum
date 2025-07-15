@@ -59,6 +59,11 @@ export const loadSampleData = async () => {
         blockedAt: null,
         blockedReason: null,
         ageInDays: Math.floor((now - createdDate) / (1000 * 60 * 60 * 24)),
+        // Novos campos para tempo gasto e taxa de erro
+        tempoGasto: null,
+        taxaErro: null,
+        tempoGastoValidado: false,
+        motivoErro: null,
         // Histórico de movimentação (simplificado para demo)
         movements: [
           {
