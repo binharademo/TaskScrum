@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { validateWipLimits } from './WIPControl';
 import {
   Box,
   Paper,
@@ -911,6 +912,12 @@ const SimpleKanban = ({ tasks, onTasksUpdate }) => {
     open: false,
     task: null
   });
+  const [wipAlertModal, setWipAlertModal] = useState({
+    open: false,
+    message: '',
+    details: '',
+    suggestion: ''
+  });
 
   useEffect(() => {
     let filtered = tasks;
@@ -940,6 +947,20 @@ const SimpleKanban = ({ tasks, onTasksUpdate }) => {
   }, [tasks, filters]);
 
   const handleStatusChange = (taskId, newStatus) => {
+    // Validar limites WIP para Priorizado e Doing
+    if (newStatus === 'Priorizado' || newStatus === 'Doing') {
+      const wipValidation = validateWipLimits(tasks, newStatus);
+      if (!wipValidation.allowed) {
+        setWipAlertModal({
+          open: true,
+          message: wipValidation.message,
+          details: wipValidation.details,
+          suggestion: wipValidation.suggestion
+        });
+        return;
+      }
+    }
+    
     // Verificar se está tentando mover para Done sem tempo gasto validado
     if (newStatus === 'Done') {
       const task = tasks.find(t => t.id === taskId);
@@ -1128,7 +1149,65 @@ const SimpleKanban = ({ tasks, onTasksUpdate }) => {
         onClose={() => setTimeValidationModal({ open: false, task: null })}
         onSave={handleTimeValidationSave}
       />
+      
+      <WipAlertModal
+        open={wipAlertModal.open}
+        message={wipAlertModal.message}
+        details={wipAlertModal.details}
+        suggestion={wipAlertModal.suggestion}
+        onClose={() => setWipAlertModal({ open: false, message: '', details: '', suggestion: '' })}
+      />
     </Box>
+  );
+};
+
+// Modal de alerta de limite WIP
+const WipAlertModal = ({ open, message, details, suggestion, onClose }) => {
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <WarningIcon color="warning" />
+          <Typography variant="h6">Limite WIP Atingido</Typography>
+        </Box>
+      </DialogTitle>
+      <DialogContent>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          <Typography variant="body1" fontWeight="bold">
+            {message}
+          </Typography>
+        </Alert>
+        
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            <strong>Detalhes:</strong>
+          </Typography>
+          <Typography variant="body2">
+            {details}
+          </Typography>
+        </Box>
+        
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            <strong>Sugestão:</strong>
+          </Typography>
+          <Typography variant="body2">
+            {suggestion}
+          </Typography>
+        </Box>
+        
+        <Box sx={{ p: 2, bgcolor: 'info.light', borderRadius: 1 }}>
+          <Typography variant="body2" color="info.dark">
+            💡 <strong>Dica:</strong> Vá para a tela de WIP Control para ajustar os limites ou desabilitar a validação obrigatória.
+          </Typography>
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} variant="contained" color="primary">
+          Entendi
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 

@@ -8,7 +8,11 @@ import {
   Tabs, 
   Tab,
   IconButton,
-  Tooltip
+  Tooltip,
+  Alert,
+  AlertTitle,
+  Collapse,
+  Fade
 } from '@mui/material';
 import { 
   Dashboard as DashboardIcon, 
@@ -59,6 +63,42 @@ function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [currentRoom, setCurrentRoomState] = useState('');
   const [roomSelectorOpen, setRoomSelectorOpen] = useState(false);
+
+  // Função para calcular violações WIP globalmente
+  const calculateWIPViolations = () => {
+    const savedConfig = localStorage.getItem('wipConfig');
+    if (!savedConfig) return [];
+
+    const config = JSON.parse(savedConfig);
+    const limits = config.limits || {};
+    
+    const statusCounts = {
+      'Backlog': 0,
+      'Priorizado': 0,
+      'Doing': 0,
+      'Done': 0
+    };
+
+    tasks.forEach(task => {
+      statusCounts[task.status] = (statusCounts[task.status] || 0) + 1;
+    });
+
+    const violations = [];
+    Object.entries(limits).forEach(([status, limit]) => {
+      if (limit && statusCounts[status] > limit) {
+        violations.push({
+          status,
+          current: statusCounts[status],
+          limit,
+          excess: statusCounts[status] - limit
+        });
+      }
+    });
+
+    return violations;
+  };
+
+  const wipViolations = calculateWIPViolations();
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -263,6 +303,60 @@ function App() {
             </Tooltip>
           </Toolbar>
         </AppBar>
+        
+        {/* Alertas WIP Globais */}
+        <Fade in={wipViolations.length > 0}>
+          <Box sx={{ 
+            position: 'sticky', 
+            top: 64, 
+            zIndex: 1000,
+            mx: 2,
+            mt: 1
+          }}>
+            <Alert 
+              severity="warning" 
+              sx={{ 
+                boxShadow: 3,
+                borderRadius: 2,
+                border: '1px solid #ed6c02'
+              }}
+            >
+              <AlertTitle>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  ⚠️ Limites WIP Violados
+                  <Box 
+                    component="span" 
+                    sx={{ 
+                      backgroundColor: 'warning.main',
+                      color: 'white',
+                      borderRadius: '50%',
+                      width: 24,
+                      height: 24,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.8rem',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    {wipViolations.length}
+                  </Box>
+                </Box>
+              </AlertTitle>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                {wipViolations.map((violation, index) => (
+                  <Typography key={violation.status} variant="body2">
+                    • <strong>{violation.status}</strong>: {violation.current} tarefas 
+                    (limite: {violation.limit}) - 
+                    <span style={{ color: 'red', fontWeight: 'bold' }}> 
+                      {violation.excess} acima do limite
+                    </span>
+                  </Typography>
+                ))}
+              </Box>
+            </Alert>
+          </Box>
+        </Fade>
         
         <Container maxWidth="xl">
           <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>

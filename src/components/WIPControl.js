@@ -22,7 +22,9 @@ import {
   TextField,
   Button,
   Divider,
-  Avatar
+  Avatar,
+  FormControlLabel,
+  Checkbox
 } from '@mui/material';
 import {
   Warning as WarningIcon,
@@ -44,6 +46,7 @@ const WIPControl = ({ tasks, onTasksUpdate }) => {
     'Done': null
   });
   const [showSettings, setShowSettings] = useState(false);
+  const [enforceWipLimits, setEnforceWipLimits] = useState(false);
 
   // Calcular estatísticas atuais
   const calculateWIPStats = () => {
@@ -152,6 +155,46 @@ const WIPControl = ({ tasks, onTasksUpdate }) => {
     }));
   };
 
+  // Função para validar movimento WIP (será exportada)
+  const validateWipMove = (currentTasks, targetStatus) => {
+    if (!enforceWipLimits) {
+      return { allowed: true, isEnforced: false };
+    }
+
+    const currentCount = currentTasks.filter(task => task.status === targetStatus).length;
+    const limit = wipLimits[targetStatus];
+
+    if (limit && currentCount >= limit) {
+      return {
+        allowed: false,
+        isEnforced: true,
+        message: `Limite WIP atingido para ${targetStatus}`,
+        details: `Atual: ${currentCount}/${limit} tarefas`,
+        suggestion: `Finalize algumas tarefas em ${targetStatus} antes de adicionar novas`
+      };
+    }
+
+    return { allowed: true, isEnforced: true };
+  };
+
+  // Persistir configurações no localStorage
+  useEffect(() => {
+    const savedConfig = localStorage.getItem('wipConfig');
+    if (savedConfig) {
+      const config = JSON.parse(savedConfig);
+      setWipLimits(config.limits || wipLimits);
+      setEnforceWipLimits(config.enforceWipLimits || false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const config = {
+      limits: wipLimits,
+      enforceWipLimits: enforceWipLimits
+    };
+    localStorage.setItem('wipConfig', JSON.stringify(config));
+  }, [wipLimits, enforceWipLimits]);
+
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -168,10 +211,13 @@ const WIPControl = ({ tasks, onTasksUpdate }) => {
         </Button>
       </Box>
 
-      {/* Alertas de WIP */}
+      {/* Alertas de WIP locais (opcional - já exibidos globalmente) */}
       {wipViolations.length > 0 && (
-        <Alert severity="warning" sx={{ mb: 3 }}>
-          <AlertTitle>⚠️ Limites WIP Violados</AlertTitle>
+        <Alert severity="info" sx={{ mb: 3 }}>
+          <AlertTitle>📊 Detalhes dos Limites WIP</AlertTitle>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            Os alertas WIP também são exibidos globalmente no topo da aplicação.
+          </Typography>
           {wipViolations.map(violation => (
             <Typography key={violation.status} variant="body2">
               • <strong>{violation.status}</strong>: {violation.current} tarefas (limite: {violation.limit}) - {violation.excess} acima do limite
@@ -186,6 +232,26 @@ const WIPControl = ({ tasks, onTasksUpdate }) => {
           <Typography variant="h6" gutterBottom>
             Configuração de Limites WIP
           </Typography>
+          
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={enforceWipLimits}
+                onChange={(e) => setEnforceWipLimits(e.target.checked)}
+                color="primary"
+              />
+            }
+            label="Limite de WIP obrigatório"
+            sx={{ mb: 2 }}
+          />
+          
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {enforceWipLimits ? 
+              '🔒 Desenvolvedores não poderão mover cards se excederem os limites' : 
+              '⚠️ Apenas alertas serão exibidos, movimentação livre permitida'
+            }
+          </Typography>
+          
           <Grid container spacing={2}>
             {Object.entries(wipLimits).map(([status, limit]) => (
               <Grid item xs={12} sm={3} key={status}>
@@ -434,6 +500,34 @@ const WIPControl = ({ tasks, onTasksUpdate }) => {
       </Grid>
     </Box>
   );
+};
+
+// Função utilitária para validar WIP que pode ser importada por outros componentes
+export const validateWipLimits = (tasks, targetStatus) => {
+  const savedConfig = localStorage.getItem('wipConfig');
+  if (!savedConfig) {
+    return { allowed: true, isEnforced: false };
+  }
+
+  const config = JSON.parse(savedConfig);
+  if (!config.enforceWipLimits) {
+    return { allowed: true, isEnforced: false };
+  }
+
+  const currentCount = tasks.filter(task => task.status === targetStatus).length;
+  const limit = config.limits?.[targetStatus];
+
+  if (limit && currentCount >= limit) {
+    return {
+      allowed: false,
+      isEnforced: true,
+      message: `Limite WIP atingido para ${targetStatus}`,
+      details: `Atual: ${currentCount}/${limit} tarefas`,
+      suggestion: `Finalize algumas tarefas em ${targetStatus} antes de adicionar novas`
+    };
+  }
+
+  return { allowed: true, isEnforced: true };
 };
 
 export default WIPControl;
