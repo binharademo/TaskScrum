@@ -173,14 +173,27 @@ function App() {
         setDarkMode(JSON.parse(savedTheme));
       }
       
-      // Verificar se está no modo demo
-      const demoMode = localStorage.getItem('demoMode') === 'true';
-      setIsDemoMode(demoMode);
-      
-      if (demoMode) {
-        const savedDescription = localStorage.getItem('demoDescription');
-        if (savedDescription) {
-          setDemoDescription(JSON.parse(savedDescription));
+      // Verificar se está no modo demo específico da sala atual
+      if (room) {
+        const roomDemoMode = localStorage.getItem(`demoMode_${room}`) === 'true';
+        setIsDemoMode(roomDemoMode);
+        
+        if (roomDemoMode) {
+          const roomDemoDescription = localStorage.getItem(`demoDescription_${room}`);
+          if (roomDemoDescription) {
+            setDemoDescription(JSON.parse(roomDemoDescription));
+          }
+        }
+      } else {
+        // Verificar modo demo global (legado)
+        const demoMode = localStorage.getItem('demoMode') === 'true';
+        setIsDemoMode(demoMode);
+        
+        if (demoMode) {
+          const savedDescription = localStorage.getItem('demoDescription');
+          if (savedDescription) {
+            setDemoDescription(JSON.parse(savedDescription));
+          }
         }
       }
     };
@@ -268,7 +281,12 @@ function App() {
       saveTasksToStorage([]);
       // Marcar que a base foi zerada para não recarregar dados de exemplo
       localStorage.setItem('tasksCleared', 'true');
-      // Remover modo demo se estiver ativo
+      // Remover modo demo se estiver ativo na sala atual
+      if (currentRoom) {
+        localStorage.removeItem(`demoMode_${currentRoom}`);
+        localStorage.removeItem(`demoDescription_${currentRoom}`);
+      }
+      // Remover modo demo global (legado)
       localStorage.removeItem('demoMode');
       localStorage.removeItem('demoDescription');
       setIsDemoMode(false);
@@ -287,6 +305,19 @@ function App() {
       reestimativas: task.reestimativas || Array.from({ length: 10 }, () => task.estimativa || 0)
     }));
     setTasks(migratedTasks);
+    
+    // Verificar se a nova sala tem modo demo específico
+    const roomDemoMode = localStorage.getItem(`demoMode_${roomCode}`) === 'true';
+    setIsDemoMode(roomDemoMode);
+    
+    if (roomDemoMode) {
+      const roomDemoDescription = localStorage.getItem(`demoDescription_${roomCode}`);
+      if (roomDemoDescription) {
+        setDemoDescription(JSON.parse(roomDemoDescription));
+      }
+    } else {
+      setDemoDescription(null);
+    }
   };
 
   const handleOpenRoomSelector = () => {
@@ -362,12 +393,17 @@ function App() {
     const demoTasks = generateDemoData();
     const demoDescription = getDemoDescription();
     
-    // Salvar dados demo
+    // Criar uma sala específica para demo
+    const demoRoomCode = 'DEMO-' + Date.now();
+    setCurrentRoomState(demoRoomCode);
+    setCurrentRoom(demoRoomCode);
+    
+    // Salvar dados demo na sala específica
     handleTasksUpdate(demoTasks);
     
-    // Salvar flag de modo demo
-    localStorage.setItem('demoMode', 'true');
-    localStorage.setItem('demoDescription', JSON.stringify(demoDescription));
+    // Salvar flag de modo demo específico por sala
+    localStorage.setItem(`demoMode_${demoRoomCode}`, 'true');
+    localStorage.setItem(`demoDescription_${demoRoomCode}`, JSON.stringify(demoDescription));
     setIsDemoMode(true);
     setDemoDescription(demoDescription);
     
