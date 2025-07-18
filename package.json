@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "react-scripts start",
+    "start:4000": "PORT=4000 react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
@@ -24,6 +25,8 @@
     "@mui/material": "^5.14.0",
     "chart.js": "^4.3.0",
     "date-fns": "^2.30.0",
+    "google-auth-library": "^10.1.0",
+    "googleapis": "^153.0.0",
     "react": "^18.2.0",
     "react-beautiful-dnd": "^13.1.1",
     "react-chartjs-2": "^5.2.0",
