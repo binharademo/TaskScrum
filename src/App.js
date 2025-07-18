@@ -39,16 +39,14 @@ import TableView from './components/TableView';
 import BurndownChart from './components/BurndownChart';
 import WIPControl from './components/WIPControl';
 import PredictiveAnalysis from './components/PredictiveAnalysis';
-import GoogleAuthComponent from './components/GoogleAuthComponent';
-import GoogleAuthFallback from './components/GoogleAuthFallback';
+import GoogleSheetsSimple from './components/GoogleSheetsSimple';
 import ProjectSharing from './components/ProjectSharing';
 import DemoModeInfo from './components/DemoModeInfo';
 import { loadTasksFromStorage, saveTasksToStorage, getCurrentRoom, setCurrentRoom } from './utils/storage';
 import RoomSelector from './components/RoomSelector';
 import { importExcelFile } from './utils/excelImport';
 import { loadSampleData } from './utils/sampleData';
-import syncService from './services/syncService';
-import googleAuth from './services/googleAuth';
+// Removido: simpleSheets - usando abordagem mais simples
 import { generateDemoData, getDemoDescription } from './services/demoData';
 
 function TabPanel({ children, value, index, ...other }) {
@@ -251,11 +249,6 @@ function App() {
     if (tasksWithTimestamps.length > 0) {
       localStorage.removeItem('tasksCleared');
     }
-    
-    // Sincronizar com Google Sheets se autenticado
-    if (user && isOnline) {
-      syncService.syncWithSheets().catch(console.error);
-    }
   };
 
   const handleFileUpload = async (event) => {
@@ -349,17 +342,11 @@ function App() {
     URL.revokeObjectURL(url);
   };
   
-  // Handlers para Google Sheets
-  const handleGoogleAuthSuccess = (user, project) => {
+  // Handlers para Google Sheets - versão simplificada
+  const handleGoogleAuthSuccess = async (user, project) => {
     setUser(user);
     setProjectInfo(project);
     setShowGoogleAuth(false);
-    
-    // Iniciar sincronização automática
-    syncService.startAutoSync();
-    
-    // Carregar dados do Sheets
-    syncService.syncWithSheets().catch(console.error);
   };
   
   const handleGoogleAuthError = (error) => {
@@ -371,8 +358,6 @@ function App() {
       // Voltar para modo local
       setShowGoogleAuth(false);
       localStorage.removeItem('useGoogleSheets');
-      // Parar sincronização
-      syncService.stopAutoSync();
       setUser(null);
       setProjectInfo(null);
     } else {
@@ -383,10 +368,8 @@ function App() {
   };
   
   const handleManualSync = () => {
-    if (user && isOnline) {
-      setSyncStatus('syncing');
-      syncService.syncWithSheets().catch(console.error);
-    }
+    // Versão simplificada - apenas mostra opção Google Sheets
+    setShowGoogleAuth(true);
   };
   
   const handleDemoMode = () => {
@@ -605,21 +588,10 @@ function App() {
         <Container maxWidth="xl">
           {showGoogleAuth ? (
             <Box sx={{ mt: 4 }}>
-              {/* Verificar se tem configuração Google, senão usar fallback */}
-              {process.env.REACT_APP_GOOGLE_CLIENT_ID && 
-               process.env.REACT_APP_GOOGLE_CLIENT_ID !== 'configure-seu-client-id-aqui' ? (
-                <GoogleAuthComponent 
-                  onAuthSuccess={handleGoogleAuthSuccess}
-                  onAuthError={handleGoogleAuthError}
-                  onBackToLocal={handleToggleGoogleSheets}
-                  onDemoMode={handleDemoMode}
-                />
-              ) : (
-                <GoogleAuthFallback 
-                  onBackToLocal={handleToggleGoogleSheets}
-                  onDemoMode={handleDemoMode}
-                />
-              )}
+              <GoogleSheetsSimple 
+                onBackToLocal={handleToggleGoogleSheets}
+                onDemoMode={handleDemoMode}
+              />
             </Box>
           ) : (
             <>

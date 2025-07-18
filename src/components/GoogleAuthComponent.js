@@ -18,70 +18,56 @@ import {
   CloudSync,
   FolderShared,
   ExitToApp,
-  PlayArrow as PlayIcon
+  PlayArrow as PlayIcon,
+  OpenInNew as OpenIcon
 } from '@mui/icons-material';
-import googleAuth from '../services/googleAuth';
-import googleSheets from '../services/googleSheets';
 
 const GoogleAuthComponent = ({ onAuthSuccess, onAuthError, onBackToLocal, onDemoMode }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [projectInfo, setProjectInfo] = useState(null);
-  const [initializing, setInitializing] = useState(true);
+  const [spreadsheetInfo, setSpreadsheetInfo] = useState(null);
+
+  // Sistema simples com Google Apps Script - sem configuração OAuth complexa
+  const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/exec';
 
   useEffect(() => {
-    initializeAuth();
-  }, []);
-
-  const initializeAuth = async () => {
-    try {
-      setInitializing(true);
-      setError(null);
-      
-      // Verificar se as configurações estão presentes
-      if (!process.env.REACT_APP_GOOGLE_CLIENT_ID || 
-          process.env.REACT_APP_GOOGLE_CLIENT_ID === 'seu-client-id-aqui' ||
-          process.env.REACT_APP_GOOGLE_CLIENT_ID === 'configure-seu-client-id-aqui') {
-        setError('Google OAuth não configurado. Configure o REACT_APP_GOOGLE_CLIENT_ID no arquivo .env para usar o Google Sheets.');
-        return;
-      }
-      
-      
-      await googleAuth.initialize();
-      
-      if (googleAuth.isSignedIn()) {
-        const currentUser = googleAuth.getCurrentUser();
-        setUser(currentUser);
-        await loadOrCreateProject(currentUser);
-      }
-    } catch (error) {
-      console.error('Erro na inicialização:', error);
-      setError(`Erro na inicialização: ${error.message}`);
-    } finally {
-      setInitializing(false);
+    // Verificar se já tem usuário logado
+    const savedUser = localStorage.getItem('googleUser');
+    const savedSpreadsheet = localStorage.getItem('userSpreadsheet');
+    
+    if (savedUser && savedSpreadsheet) {
+      setUser(JSON.parse(savedUser));
+      setSpreadsheetInfo(JSON.parse(savedSpreadsheet));
     }
-  };
+  }, []);
 
   const handleSignIn = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const user = await googleAuth.signIn();
-      setUser(user);
+      // Login simples do Google usando popup
+      const response = await window.gapi.auth2.getAuthInstance().signIn();
+      const profile = response.getBasicProfile();
       
-      await loadOrCreateProject(user);
+      const userData = {
+        id: profile.getId(),
+        name: profile.getName(),
+        email: profile.getEmail(),
+        imageUrl: profile.getImageUrl(),
+        accessToken: response.getAuthResponse().access_token
+      };
+      
+      setUser(userData);
+      localStorage.setItem('googleUser', JSON.stringify(userData));
+      
+      // Criar planilha automaticamente
+      await createUserSpreadsheet(userData);
       
     } catch (error) {
       console.error('Erro no login:', error);
-      
-      let errorMessage = 'Falha no login com Google';
-      if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      setError(errorMessage);
+      setError('Falha no login com Google. Tente novamente.');
       if (onAuthError) onAuthError(error);
     } finally {
       setLoading(false);
