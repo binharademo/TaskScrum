@@ -47,6 +47,7 @@ const GoogleAuthComponent = ({ onAuthSuccess, onAuthError, onBackToLocal, onDemo
         return;
       }
       
+      
       await googleAuth.initialize();
       
       if (googleAuth.isSignedIn()) {
@@ -74,7 +75,13 @@ const GoogleAuthComponent = ({ onAuthSuccess, onAuthError, onBackToLocal, onDemo
       
     } catch (error) {
       console.error('Erro no login:', error);
-      setError('Falha no login com Google');
+      
+      let errorMessage = 'Falha no login com Google';
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
       if (onAuthError) onAuthError(error);
     } finally {
       setLoading(false);
@@ -179,7 +186,7 @@ const GoogleAuthComponent = ({ onAuthSuccess, onAuthError, onBackToLocal, onDemo
             variant="contained"
             startIcon={loading ? <CircularProgress size={20} /> : <GoogleIcon />}
             onClick={handleSignIn}
-            disabled={loading}
+            disabled={loading || error}
             sx={{
               backgroundColor: '#4285f4',
               '&:hover': { backgroundColor: '#3367d6' },

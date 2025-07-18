@@ -16,25 +16,36 @@ class GoogleAuthService {
       // Carregar Google API
       await this.loadGoogleAPI();
       
-      // Inicializar gapi
-      await window.gapi.load('auth2', async () => {
-        await window.gapi.auth2.init({
-          client_id: GOOGLE_CONFIG.CLIENT_ID,
-          scope: GOOGLE_CONFIG.SCOPES.join(' ')
+      // Inicializar gapi com Promise
+      await new Promise((resolve, reject) => {
+        window.gapi.load('auth2', {
+          callback: async () => {
+            try {
+              await window.gapi.auth2.init({
+                client_id: GOOGLE_CONFIG.CLIENT_ID,
+                scope: GOOGLE_CONFIG.SCOPES.join(' ')
+              });
+              
+              this.authInstance = window.gapi.auth2.getAuthInstance();
+              this.isInitialized = true;
+              
+              // Verificar se já está logado
+              if (this.authInstance.isSignedIn.get()) {
+                this.currentUser = this.authInstance.currentUser.get();
+              }
+              
+              resolve();
+            } catch (error) {
+              reject(error);
+            }
+          },
+          onerror: reject
         });
-        
-        this.authInstance = window.gapi.auth2.getAuthInstance();
-        this.isInitialized = true;
-        
-        // Verificar se já está logado
-        if (this.authInstance.isSignedIn.get()) {
-          this.currentUser = this.authInstance.currentUser.get();
-        }
       });
       
     } catch (error) {
       console.error('Erro ao inicializar Google Auth:', error);
-      throw new Error('Falha na inicialização do Google Auth');
+      throw new Error(`Falha na inicialização do Google Auth: ${error.message}`);
     }
   }
 
@@ -50,12 +61,22 @@ class GoogleAuthService {
       script.src = 'https://apis.google.com/js/api.js';
       script.onload = () => {
         try {
-          window.gapi.load('client:auth2', resolve);
+          // Aguardar o gapi estar disponível
+          const checkGapi = () => {
+            if (window.gapi) {
+              resolve();
+            } else {
+              setTimeout(checkGapi, 100);
+            }
+          };
+          checkGapi();
         } catch (error) {
           reject(error);
         }
       };
-      script.onerror = reject;
+      script.onerror = (error) => {
+        reject(new Error('Falha ao carregar Google API'));
+      };
       document.head.appendChild(script);
     });
   }

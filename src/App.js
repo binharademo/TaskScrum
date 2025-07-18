@@ -40,6 +40,7 @@ import BurndownChart from './components/BurndownChart';
 import WIPControl from './components/WIPControl';
 import PredictiveAnalysis from './components/PredictiveAnalysis';
 import GoogleAuthComponent from './components/GoogleAuthComponent';
+import GoogleAuthFallback from './components/GoogleAuthFallback';
 import ProjectSharing from './components/ProjectSharing';
 import DemoModeInfo from './components/DemoModeInfo';
 import { loadTasksFromStorage, saveTasksToStorage, getCurrentRoom, setCurrentRoom } from './utils/storage';
@@ -604,12 +605,21 @@ function App() {
         <Container maxWidth="xl">
           {showGoogleAuth ? (
             <Box sx={{ mt: 4 }}>
-              <GoogleAuthComponent 
-                onAuthSuccess={handleGoogleAuthSuccess}
-                onAuthError={handleGoogleAuthError}
-                onBackToLocal={handleToggleGoogleSheets}
-                onDemoMode={handleDemoMode}
-              />
+              {/* Verificar se tem configuração Google, senão usar fallback */}
+              {process.env.REACT_APP_GOOGLE_CLIENT_ID && 
+               process.env.REACT_APP_GOOGLE_CLIENT_ID !== 'configure-seu-client-id-aqui' ? (
+                <GoogleAuthComponent 
+                  onAuthSuccess={handleGoogleAuthSuccess}
+                  onAuthError={handleGoogleAuthError}
+                  onBackToLocal={handleToggleGoogleSheets}
+                  onDemoMode={handleDemoMode}
+                />
+              ) : (
+                <GoogleAuthFallback 
+                  onBackToLocal={handleToggleGoogleSheets}
+                  onDemoMode={handleDemoMode}
+                />
+              )}
             </Box>
           ) : (
             <>
