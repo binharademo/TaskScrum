@@ -1402,3 +1402,133 @@ feat: Implementar funcionalidade completa "Adicionar Nova Tarefa"
 ---
 
 **Status Final**: ✅ **TOTALMENTE FUNCIONAL** - TaskTracker completo com todas as funcionalidades principais implementadas, servidor rodando perfeitamente em http://localhost:3000, sistema commitado e documentado.
+
+---
+
+## 🐛 CORREÇÃO DE BUG CRÍTICO - 21/07/2025
+
+### Problema Identificado
+
+#### **Erro**: `bValue.toLowerCase is not a function`
+- **Local**: `/src/components/TableView.js` linha 459
+- **Situação**: Ao clicar na aba "Tabela" após criar nova tarefa
+- **Tipo**: Runtime Error que quebrava totalmente a funcionalidade
+
+#### **Causa Raiz**
+- **Nova tarefa** criada com campo `estimativa` como **number** (0)
+- **Função de ordenação** esperava apenas strings
+- **Código problemático**:
+```javascript
+// ❌ ERRO: Assumia que se aValue é string, bValue também é
+if (typeof aValue === 'string') {
+  aValue = aValue.toLowerCase();
+  bValue = bValue.toLowerCase(); // 🐛 ERRO: bValue pode ser number!
+}
+```
+
+#### **Impacto**
+- **❌ Aba Tabela**: Totalmente inacessível
+- **❌ Funcionalidade**: Burndown Chart, Análise Preditiva, Estatísticas
+- **❌ Experiência**: Sistema parecia "quebrado" para o usuário
+- **✅ Aba Kanban**: Continuava funcionando normalmente
+
+### Solução Implementada
+
+#### **Código Corrigido**
+```javascript
+// ✅ SOLUÇÃO: Verificação de tipos robusta
+return filtered.sort((a, b) => {
+  let aValue = a[sortBy];
+  let bValue = b[sortBy];
+  
+  // 1️⃣ Tratar valores nulos/undefined
+  if (aValue == null) aValue = '';
+  if (bValue == null) bValue = '';
+  
+  // 2️⃣ Converter APENAS se ambos forem strings
+  if (typeof aValue === 'string' && typeof bValue === 'string') {
+    aValue = aValue.toLowerCase();
+    bValue = bValue.toLowerCase();
+  }
+  
+  // 3️⃣ Ordenação funciona com qualquer tipo
+  if (sortDirection === 'asc') {
+    return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+  } else {
+    return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+  }
+});
+```
+
+#### **Melhorias Implementadas**
+1. **🔒 Null Safety**: Trata valores `null`/`undefined` como string vazia
+2. **🔍 Type Safety**: Verifica se **ambos** valores são strings antes da conversão
+3. **🔢 Mixed Types**: Funciona com strings, números, datas, etc.
+4. **🛡️ Future Proof**: Previne erros similares em novos campos
+
+### Lições Aprendidas
+
+#### **🚀 Boas Práticas para Evitar**
+1. **⚠️ NUNCA assumir tipos** em funções de ordenação
+2. **✅ SEMPRE verificar** ambos operandos antes de métodos de string
+3. **🔍 TESTAR cenarios** com dados de tipos mistos
+4. **📝 DOCUMENTAR** estrutura de dados esperada
+
+#### **🚪 Ponto de Atenção**
+- **Nova funcionalidade** pode introduzir novos tipos de dados
+- **Campos numéricos** (estimativa, IDs) vs **campos texto** (nomes)
+- **Funções utilitárias** devem ser genéricas e robustas
+- **Testes** devem incluir cenários com dados heterogêneos
+
+### Código Defensivo Implementado
+
+#### **Template para Funções de Ordenação Seguras**
+```javascript
+const safeSortFunction = (a, b, sortBy, direction = 'asc') => {
+  let aValue = a[sortBy];
+  let bValue = b[sortBy];
+  
+  // 1. Null safety
+  if (aValue == null) aValue = '';
+  if (bValue == null) bValue = '';
+  
+  // 2. Type safety para strings
+  if (typeof aValue === 'string' && typeof bValue === 'string') {
+    aValue = aValue.toLowerCase();
+    bValue = bValue.toLowerCase();
+  }
+  
+  // 3. Ordenação universal
+  const result = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+  return direction === 'asc' ? result : -result;
+};
+```
+
+### Status da Correção
+
+#### **Commit Realizado** - `0e51042`
+```
+fix: Corrigir erro de ordenação no TableView com tipos de dados mistos
+- Problema: Error "bValue.toLowerCase is not a function"
+- Solução: Verificação de tipos antes da conversão
+- Prevenção: Tratamento robusto de valores null e tipos mistos
+```
+
+#### **Testes Realizados**
+- ✅ **Aba Tabela**: Abre normalmente após criação de nova tarefa
+- ✅ **Ordenação**: Funciona com campos string e numéricos
+- ✅ **Filtros**: Operam normalmente com dados mistos
+- ✅ **Burndown Chart**: Gera gráficos corretamente
+- ✅ **Nova tarefa**: Integração perfeita entre Kanban e Tabela
+
+#### **Prevenção Futura**
+- ✅ **Código defensivo** implementado
+- ✅ **Type safety** em operações críticas
+- ✅ **Documentação** do erro para referência
+- ✅ **Template de ordenação** segura criado
+
+**Status**: ✅ **BUG CORRIGIDO E DOCUMENTADO** - Sistema totalmente funcional, erro documentado para prevenção futura.
+
+---
+
+**Status Final**: ✅ **TOTALMENTE FUNCIONAL** - TaskTracker completo com todas as funcionalidades principais implementadas, bugs críticos corrigidos, servidor rodando perfeitamente em http://localhost:3000, sistema commitado e documentado.
