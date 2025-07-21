@@ -454,7 +454,12 @@ const TableView = ({ tasks, onTasksUpdate }) => {
       let aValue = a[sortBy];
       let bValue = b[sortBy];
       
-      if (typeof aValue === 'string') {
+      // Tratar valores nulos/undefined
+      if (aValue == null) aValue = '';
+      if (bValue == null) bValue = '';
+      
+      // Converter para string apenas se ambos forem strings
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
         aValue = aValue.toLowerCase();
         bValue = bValue.toLowerCase();
       }
