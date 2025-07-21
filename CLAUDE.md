@@ -137,7 +137,7 @@ TaskTracker é um sistema de gestão de tarefas inspirado no Trello, desenvolvid
 ### Iniciar servidor
 ```bash
 npm start
-# Servidor roda em http://localhost:3001
+# Servidor roda em http://localhost:3000
 ```
 
 ### Estrutura do projeto
@@ -204,7 +204,7 @@ tasktracker/
 
 ### Servidor
 - react-scripts 5.0.1
-- Porta padrão: 3001
+- Porta padrão: 3000
 
 ## Comandos Úteis Testados
 
@@ -379,7 +379,7 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
 
 ### Como Usar
 
-1. **Acesse** http://localhost:3001
+1. **Acesse** http://localhost:3000
 2. **Aba Kanban** (primeira aba)
 3. **Clique** em qualquer card
 4. **Edite** campos no modal
@@ -990,7 +990,7 @@ const [demoDescription, setDemoDescription] = useState(null);
 ### Fluxo de Uso
 
 #### **Ativação do Modo Demo**
-1. Usuário acessa http://localhost:4000
+1. Usuário acessa http://localhost:3000
 2. Clica no botão Google no cabeçalho
 3. Escolhe "Modo Demo (com dados de exemplo)"
 4. Sistema carrega 10 tarefas realistas
@@ -1068,4 +1068,337 @@ feat: Implementar integração Google Sheets e Modo Demo completos
 - Documentação completa
 - Integração perfeita com sistema existente
 
-**Status**: ✅ Totalmente funcional - Sistema de abas, análise preditiva, previsões dinâmicas, busca textual, validação de tempo gasto, integração Google Sheets e modo demo implementados e otimizados.
+---
+
+## 🚀 GOOGLE SHEETS SUPER SIMPLES VIA CSV - 19/07/2025
+
+### Problema Resolvido
+O sistema anterior de Google Sheets com OAuth era muito complexo e causava erros de API. Foi implementada uma solução **100% simples** usando CSV.
+
+### Nova Solução: GoogleSheetsSimple
+
+#### 1. **Sistema Plug-and-Play**
+- **Zero configuração** necessária
+- **Sem OAuth** ou configurações de API
+- **Sempre funciona** independente de configurações
+- **Interface guiada** em 3 passos simples
+
+#### 2. **Fluxo de 3 Passos**
+```
+Passo 1: [Baixar CSV] → Download automático dos dados
+Passo 2: [Criar Planilha] → Abre Google Sheets automaticamente  
+Passo 3: [Copiar Dados] → Cole os dados na planilha
+```
+
+#### 3. **Interface Intuitiva**
+- **Stepper visual** mostrando progresso
+- **Botões contextuais** para cada etapa
+- **Instruções claras** para cada passo
+- **Alternativas sempre disponíveis** (Local, Demo)
+
+### Implementação Técnica
+
+#### Componente GoogleSheetsSimple.js
+```javascript
+// Geração automática de CSV
+const generateCSV = (tasks) => {
+  const headers = [
+    'ID', 'Épico', 'User Story', 'Atividade', 'Estimativa', 
+    'Desenvolvedor', 'Sprint', 'Status', 'Prioridade',
+    'Dia1', 'Dia2', 'Dia3', 'Dia4', 'Dia5',
+    'Dia6', 'Dia7', 'Dia8', 'Dia9', 'Dia10',
+    'Tempo Gasto', 'Taxa Erro', 'Criado em', 'Atualizado em'
+  ];
+
+  const rows = tasks.map(task => [
+    task.id || '',
+    task.epico || '',
+    // ... todos os campos
+  ]);
+
+  const csv = [headers, ...rows].map(row => row.join(',')).join('\\n');
+  return csv;
+};
+```
+
+#### Funcionalidades Implementadas
+1. **Download automático** de CSV com todos os dados
+2. **Abertura automática** do Google Sheets
+3. **Cópia para clipboard** dos dados CSV
+4. **Instruções visuais** para importação
+5. **Stepper progressivo** com validação de passos
+
+### Arquivos Criados/Modificados
+
+#### `/src/components/GoogleSheetsSimple.js` (NOVO)
+- Interface em 3 passos com Stepper Material-UI
+- Geração automática de CSV a partir das tarefas
+- Botões contextuais para cada etapa
+- Instruções detalhadas de importação
+
+#### `/src/App.js` (MODIFICADO)
+- Substituído sistema complexo por GoogleSheetsSimple
+- Removidas dependências de API complexas
+- Simplificados handlers de autenticação
+
+#### `GOOGLE_SHEETS_SIMPLES.md` (NOVO)
+- Documentação completa da nova solução
+- Guia passo-a-passo de uso
+- Benefícios e vantagens do sistema
+
+### Benefícios da Nova Solução
+
+#### 1. **Simplicidade Total**
+- ✅ **Sem configuração** - Funciona imediatamente
+- ✅ **Sem erros de API** - Não depende de OAuth
+- ✅ **Sempre disponível** - Não quebra nunca
+- ✅ **Universal** - Funciona em qualquer navegador
+
+#### 2. **Controle Total do Usuário**
+- ✅ **Seus dados** - Planilha na conta pessoal
+- ✅ **Controle de acesso** - Gerencia pelo Google Sheets
+- ✅ **Personalização** - Pode modificar a planilha livremente
+- ✅ **Backup automático** - Google cuida do backup
+
+#### 3. **Compartilhamento Nativo**
+- ✅ **Compartilha pela planilha** - Usa recursos nativos do Google
+- ✅ **Permissões granulares** - Controle fino de acesso
+- ✅ **Colaboração real-time** - Multiple usuários simultâneos
+- ✅ **Histórico de versões** - Google mantém versões
+
+#### 4. **Integração Flexível**
+- ✅ **Import/Export fácil** - Via CSV padrão
+- ✅ **Compatibilidade total** - Todos os campos suportados
+- ✅ **Sincronização manual** - Quando necessário
+- ✅ **Dados estruturados** - Formato CSV universal
+
+### Como Usar
+
+#### 1. **Acesso ao Sistema**
+1. Acesse http://localhost:3000
+2. Clique no ícone Google no cabeçalho
+3. Veja a interface do GoogleSheetsSimple
+
+#### 2. **Passo 1: Baixar Dados**
+1. Clique em "Baixar CSV"
+2. Arquivo é gerado e baixado automaticamente
+3. Contém todas as suas tarefas formatadas
+
+#### 3. **Passo 2: Criar Planilha**
+1. Clique em "Criar Planilha"
+2. Google Sheets abre em nova aba
+3. Planilha vazia é criada automaticamente
+
+#### 4. **Passo 3: Importar Dados**
+1. Clique em "Copiar Dados" (opcional)
+2. Na planilha: Arquivo → Importar
+3. Selecione o CSV baixado ou cole os dados
+4. Configure como "Separado por vírgulas"
+5. Pronto! Dados importados
+
+### Interface Visual
+
+#### Elementos da Tela:
+- **🔵 Ícone Google** com título "Google Sheets - Modo Simples"
+- **ℹ️ Alert informativo** com benefícios
+- **📊 Stepper vertical** com 3 passos
+- **🔘 Botões contextuais** para cada ação
+- **✅ Alertas de sucesso** com instruções
+- **↩️ Botões alternativos** (Local, Demo)
+
+#### Responsividade:
+- **Layout centralizado** em Paper Material-UI
+- **Máximo 600px** de largura
+- **Stepper vertical** para mobile
+- **Botões flexíveis** que se adaptam
+
+### Status Atual
+
+#### ✅ **Implementado e Funcionando:**
+- Sistema GoogleSheetsSimple completo
+- Interface guiada em 3 passos
+- Geração automática de CSV
+- Integração com App.js
+- Documentação completa
+- Servidor rodando sem erros
+
+#### ✅ **Testado:**
+- Download de CSV funcionando
+- Abertura de Google Sheets funcionando
+- Cópia para clipboard funcionando
+- Interface responsiva funcionando
+- Stepper progressivo funcionando
+
+#### ✅ **Commitado:**
+```
+feat: Implementar Google Sheets super simples via CSV
+- Substituir sistema complexo de OAuth por abordagem CSV simples
+- Criar GoogleSheetsSimple com fluxo em 3 passos guiados
+- Sistema 100% plug-and-play sem configuração necessária
+```
+
+### Comparação: Antes vs Depois
+
+#### **❌ Sistema Anterior (Complexo):**
+- Configurações OAuth obrigatórias
+- Client ID e API Keys necessários
+- Erros frequentes de inicialização
+- Dependência de APIs externas
+- Interface confusa com fallbacks
+
+#### **✅ Sistema Atual (Simples):**
+- Zero configuração necessária
+- Funciona imediatamente
+- Sem erros de API
+- Interface intuitiva guiada
+- Sempre disponível
+
+### Próximos Passos Opcionais
+
+1. **Sincronização reversa** - Import de CSV modificado de volta
+2. **Templates de planilha** - Planilhas pré-formatadas
+3. **Múltiplos formatos** - Excel, JSON, etc.
+4. **Automatização** - Scripts Google Apps Script
+
+---
+
+**Status Final**: ✅ **TOTALMENTE FUNCIONAL** - Google Sheets agora é verdadeiramente simples via CSV, servidor rodando perfeitamente em http://localhost:3000, sistema commitado e documentado.
+
+---
+
+## 🆕 FUNCIONALIDADE "ADICIONAR NOVA TAREFA" - 21/07/2025
+
+### Funcionalidade Implementada
+
+#### 1. **Botão "Nova Tarefa" Integrado**
+- **Localização**: Barra de filtros do Kanban, lado direito
+- **Design**: Botão azul com ícone AddIcon e texto "Nova Tarefa"
+- **Posicionamento**: Após os filtros, antes dos botões de limpeza
+- **Responsivo**: Largura mínima de 140px
+
+#### 2. **Modal Reutilizado e Inteligente**
+- **Mesmo modal**: TaskDetailsModal usado para editar e criar
+- **Modo automático**: `isNewTask={true}` para nova tarefa
+- **Interface adaptada**: Remove seções irrelevantes (Status, Timestamps)
+- **Título dinâmico**: "Nova Tarefa" vs "Editando/Detalhes da Tarefa"
+- **Botões contextuais**: "Criar Tarefa" vs "Salvar Alterações"
+
+#### 3. **Campos Editáveis Completos**
+- **✅ Épico**: Dropdown com cores automáticas dos épicos existentes
+- **✅ História do Usuário**: Textarea de 3 linhas
+- **✅ Atividade**: TextField obrigatório
+- **✅ Detalhamento**: Textarea de 3 linhas
+- **✅ Prioridade**: Select (Baixa, Média, Alta, Crítica) - padrão "Média"
+- **✅ Desenvolvedor**: TextField para nome
+- **✅ Sprint**: TextField editável para nome do sprint
+- **✅ Tipo da Atividade**: TextField para categorização
+- **✅ Tamanho da Story**: Select (-, XS, S, M, L, XL)
+- **✅ Tela**: TextField para identificação da interface
+- **✅ Estimativa**: Campo numérico (min: 0, step: 0.5h)
+- **✅ Observações**: Textarea de 3 linhas
+
+#### 4. **Geração Automática de Dados**
+- **ID único**: `task-${timestamp}-${random}` 
+- **originalId**: Timestamp numérico para referência
+- **Status inicial**: "Backlog" (padrão)
+- **Timestamps**: `createdAt` e `updatedAt` automáticos
+- **Campos zerados**: `horasMedidas: 0`, `tempoGasto: null`, etc.
+
+#### 5. **Validação Inteligente**
+- **Campo obrigatório**: Atividade OU História do Usuário deve ter conteúdo
+- **Botão habilitado**: Apenas quando validação passa
+- **Feedback visual**: Botão desabilitado se campos vazios
+- **Optional chaining**: Todos os campos protegidos contra null/undefined
+
+#### 6. **Integração Perfeita**
+- **Aparição automática**: Nova tarefa aparece na coluna Backlog
+- **Funcionalidades mantidas**: Modal de edição, drag-and-drop, validações
+- **Agrupamento**: Integra automaticamente com agrupamento por épico
+- **Filtros**: Nova tarefa responde a todos os filtros existentes
+
+### Arquivos Modificados
+
+#### `/src/components/SimpleKanban.js`
+- **Linhas 32, 980**: Adicionado import `AddIcon` e estado `newTaskModal`
+- **Linhas 80-133**: Adaptado `TaskDetailsModal` para modo `isNewTask`
+- **Linhas 84-113**: Lógica de inicialização para nova tarefa com defaults
+- **Linhas 114-128**: Função `handleSave` adaptada para criação vs edição
+- **Linhas 129-136**: Função `handleCancel` com comportamento diferenciado
+- **Linhas 350-400**: Campos Tipo, Sprint, Tamanho, Tela tornados editáveis
+- **Linhas 448-465**: Campo Estimativa tornado editável com validação numérica
+- **Linhas 510-530**: Campo Observações tornado editável
+- **Linhas 1190-1200**: Botão "Nova Tarefa" na barra de filtros
+- **Linhas 1220-1235**: Modal de nova tarefa com handlers específicos
+
+### Fluxo de Uso
+
+#### **Criação de Nova Tarefa**
+1. **Acesso**: Usuário clica em "Nova Tarefa" na barra de filtros
+2. **Modal**: Abre automaticamente em modo de edição
+3. **Preenchimento**: Todos os campos editáveis e disponíveis
+4. **Validação**: Pelo menos Atividade ou História do Usuário obrigatória
+5. **Criação**: Botão "Criar Tarefa" salva e fecha modal
+6. **Resultado**: Tarefa aparece na coluna Backlog agrupada por épico
+
+#### **Diferenças Visuais do Modal**
+- **✅ Título**: "Nova Tarefa" (sem número ID)
+- **❌ Botão Editar**: Oculto (já está em modo edição)
+- **❌ Status e Movimentação**: Seção oculta
+- **❌ Timestamps**: Seção oculta  
+- **✅ Todos os campos**: Editáveis desde o início
+- **✅ Botão principal**: "Criar Tarefa" com ícone AddIcon
+
+### Benefícios da Implementação
+
+#### **Eficiência de Código**
+- ✅ **Reutilização**: Mesmo modal para criar e editar (DRY principle)
+- ✅ **Consistência**: Interface idêntica garante UX familiar
+- ✅ **Manutenção**: Uma única fonte de verdade para formulários
+
+#### **Experiência do Usuário**
+- ✅ **Fluxo natural**: Botão bem posicionado e visível
+- ✅ **Campos completos**: Todos os dados podem ser preenchidos
+- ✅ **Validação clara**: Feedback imediato sobre campos obrigatórios
+- ✅ **Resultado imediato**: Nova tarefa aparece instantaneamente
+
+#### **Robustez Técnica**
+- ✅ **Null safety**: Optional chaining em todos os acessos
+- ✅ **IDs únicos**: Sem conflitos de identificação
+- ✅ **Defaults sensatos**: Status Backlog, Prioridade Média
+- ✅ **Integração total**: Funciona com todas as funcionalidades existentes
+
+### Status dos Testes
+
+#### Cenários Testados:
+- ✅ Abertura do modal de nova tarefa
+- ✅ Preenchimento de todos os campos editáveis
+- ✅ Validação de campos obrigatórios
+- ✅ Criação e aparição na coluna Backlog
+- ✅ Integração com agrupamento por épico
+- ✅ Funcionamento de filtros na nova tarefa
+- ✅ Edição posterior da tarefa criada
+- ✅ Modal compacto/expandido funcionando
+- ✅ Drag-and-drop da nova tarefa
+
+### Commit Realizado
+```
+feat: Implementar funcionalidade completa "Adicionar Nova Tarefa"
+- Reutilizar modal TaskDetailsModal para criar novas tarefas
+- Implementar todos os campos editáveis (épico, estimativa, sprint, etc)
+- Gerar IDs únicos e timestamps automaticamente
+- Validação obrigatória e integração perfeita com sistema existente
+```
+
+### Status: ✅ **IMPLEMENTADO E TESTADO**
+- Funcionalidade completa de adicionar nova tarefa
+- Interface integrada e intuitiva
+- Todos os campos editáveis disponíveis
+- Validações e null safety implementadas
+- Sistema robusto e bem testado
+- Documentação completa atualizada
+
+**Status**: ✅ Totalmente funcional - Sistema de abas, análise preditiva, previsões dinâmicas, busca textual, validação de tempo gasto, integração Google Sheets, modo demo, toggle compacto/expandido e **funcionalidade completa de adicionar nova tarefa** implementados e otimizados.
+
+---
+
+**Status Final**: ✅ **TOTALMENTE FUNCIONAL** - TaskTracker completo com todas as funcionalidades principais implementadas, servidor rodando perfeitamente em http://localhost:3000, sistema commitado e documentado.
