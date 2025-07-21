@@ -47,7 +47,8 @@ import {
   Schedule as ScheduleIcon,
   Category as CategoryIcon,
   ViewCompact as ViewCompactIcon,
-  ViewList as ViewListIcon
+  ViewList as ViewListIcon,
+  Add as AddIcon
 } from '@mui/icons-material';
 
 const columns = [
@@ -77,19 +78,52 @@ const getInitials = (name) => {
   return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
 };
 
-const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }) => {
+const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate, isNewTask = false }) => {
   const [editedTask, setEditedTask] = useState(task);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(isNewTask);
 
   useEffect(() => {
-    setEditedTask(task);
-    setIsEditing(false); // Reset editing mode when task changes
-  }, [task]);
+    if (isNewTask) {
+      // Para nova tarefa, iniciar com dados padrão
+      const newTaskDefaults = {
+        id: null,
+        originalId: null,
+        epico: '',
+        userStory: '',
+        atividade: '',
+        detalhamento: '',
+        desenvolvedor: '',
+        sprint: '',
+        status: 'Backlog',
+        prioridade: 'Média',
+        estimativa: 0,
+        tipoAtividade: '',
+        tamanhoStory: '',
+        tela: '',
+        observacoes: '',
+        horasMedidas: 0,
+        tempoGasto: null,
+        taxaErro: null,
+        tempoGastoValidado: false,
+        motivoErro: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      setEditedTask(newTaskDefaults);
+      setIsEditing(true);
+    } else {
+      setEditedTask(task);
+      setIsEditing(false); // Reset editing mode when task changes
+    }
+  }, [task, isNewTask]);
 
-  if (!task) return null;
+  if (!task && !isNewTask) return null;
 
   const getEpicColor = (epic) => epicColors[epic] || '#666666';
   const getPriorityColor = (priority) => priorityColors[priority] || '#757575';
+  
+  // Usar editedTask ao invés de task para compatibilidade com nova tarefa
+  const currentTask = editedTask || task;
 
   const handleFieldChange = (field, value) => {
     setEditedTask(prev => ({
@@ -100,21 +134,40 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
 
   const handleSave = () => {
     if (editedTask && onTasksUpdate) {
-      // Chamar a função de atualização diretamente
-      onTasksUpdate(editedTask);
+      if (isNewTask) {
+        // Para nova tarefa, gerar ID e dados necessários
+        const newTask = {
+          ...editedTask,
+          id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          originalId: Date.now(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        onTasksUpdate(newTask, true); // true indica que é nova tarefa
+      } else {
+        // Para edição, apenas atualizar
+        onTasksUpdate(editedTask);
+      }
       setIsEditing(false);
       onClose();
     }
   };
 
   const handleCancel = () => {
-    setEditedTask(task); // Reset changes
-    setIsEditing(false);
+    if (isNewTask) {
+      // Para nova tarefa, apenas fechar
+      onClose();
+    } else {
+      setEditedTask(task); // Reset changes
+      setIsEditing(false);
+    }
   };
 
   const handleMoveTask = (newStatus) => {
-    onStatusChange(task.id, newStatus);
-    onClose(); // Fechar modal após mover
+    if (!isNewTask && currentTask) {
+      onStatusChange(currentTask.id, newStatus);
+      onClose(); // Fechar modal após mover
+    }
   };
 
   return (
@@ -124,18 +177,20 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <EditIcon color="primary" />
             <Typography variant="h6">
-              {isEditing ? 'Editando' : 'Detalhes da'} Tarefa #{task.originalId}
+              {isNewTask ? 'Nova Tarefa' : (isEditing ? 'Editando' : 'Detalhes da')} {!isNewTask && `Tarefa #${task.originalId}`}
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Button
-              variant={isEditing ? "contained" : "outlined"}
-              size="small"
-              onClick={() => isEditing ? handleCancel() : setIsEditing(true)}
-              startIcon={<EditIcon />}
-            >
-              {isEditing ? 'Cancelar' : 'Editar'}
-            </Button>
+            {!isNewTask && (
+              <Button
+                variant={isEditing ? "contained" : "outlined"}
+                size="small"
+                onClick={() => isEditing ? handleCancel() : setIsEditing(true)}
+                startIcon={<EditIcon />}
+              >
+                {isEditing ? 'Cancelar' : 'Editar'}
+              </Button>
+            )}
             <IconButton onClick={onClose} size="small">
               <CloseIcon />
             </IconButton>
@@ -148,12 +203,12 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
           {/* Épico */}
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-              <EpicIcon sx={{ color: getEpicColor(isEditing ? editedTask.epico : task.epico) }} />
+              <EpicIcon sx={{ color: getEpicColor(currentTask?.epico) }} />
               {isEditing ? (
                 <TextField
                   select
                   label="Épico"
-                  value={editedTask.epico || ''}
+                  value={editedTask?.epico || ''}
                   onChange={(e) => handleFieldChange('epico', e.target.value)}
                   size="small"
                   sx={{ minWidth: 200 }}
@@ -163,15 +218,15 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
                   ))}
                 </TextField>
               ) : (
-                <Typography variant="h6" sx={{ color: getEpicColor(task.epico) }}>
-                  {task.epico}
+                <Typography variant="h6" sx={{ color: getEpicColor(currentTask?.epico) }}>
+                  {currentTask?.epico}
                 </Typography>
               )}
             </Box>
             <Chip
-              label={isEditing ? editedTask.epico : task.epico}
+              label={currentTask?.epico || 'Selecionar Épico'}
               sx={{
-                bgcolor: getEpicColor(isEditing ? editedTask.epico : task.epico),
+                bgcolor: getEpicColor(currentTask?.epico),
                 color: 'white',
                 fontWeight: 'bold'
               }}
@@ -188,7 +243,7 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
                 fullWidth
                 multiline
                 rows={3}
-                value={editedTask.userStory || ''}
+                value={editedTask?.userStory || ''}
                 onChange={(e) => handleFieldChange('userStory', e.target.value)}
                 variant="outlined"
                 placeholder="Descreva a história do usuário..."
@@ -196,14 +251,14 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
             ) : (
               <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
                 <Typography variant="body1">
-                  {task.userStory}
+                  {currentTask?.userStory}
                 </Typography>
               </Paper>
             )}
           </Box>
 
           {/* Atividade */}
-          {(task.atividade || isEditing) && (
+          {(currentTask?.atividade || isEditing) && (
             <Box>
               <Typography variant="subtitle1" gutterBottom fontWeight="bold">
                 Atividade
@@ -213,7 +268,7 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
                   fullWidth
                   multiline
                   rows={2}
-                  value={editedTask.atividade || ''}
+                  value={editedTask?.atividade || ''}
                   onChange={(e) => handleFieldChange('atividade', e.target.value)}
                   variant="outlined"
                   placeholder="Descreva a atividade..."
@@ -221,7 +276,7 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
               ) : (
                 <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
                   <Typography variant="body1">
-                    {task.atividade}
+                    {currentTask?.atividade}
                   </Typography>
                 </Paper>
               )}
@@ -229,7 +284,7 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
           )}
 
           {/* Detalhamento */}
-          {(task.detalhamento || isEditing) && (
+          {(currentTask?.detalhamento || isEditing) && (
             <Box>
               <Typography variant="subtitle1" gutterBottom fontWeight="bold">
                 Detalhamento
@@ -239,7 +294,7 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
                   fullWidth
                   multiline
                   rows={3}
-                  value={editedTask.detalhamento || ''}
+                  value={editedTask?.detalhamento || ''}
                   onChange={(e) => handleFieldChange('detalhamento', e.target.value)}
                   variant="outlined"
                   placeholder="Adicione detalhes técnicos..."
@@ -247,7 +302,7 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
               ) : (
                 <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
                   <Typography variant="body1">
-                    {task.detalhamento}
+                    {currentTask?.detalhamento}
                   </Typography>
                 </Paper>
               )}
@@ -268,7 +323,7 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
                   {isEditing ? (
                     <FormControl size="small" sx={{ minWidth: 120 }}>
                       <Select
-                        value={editedTask.prioridade || ''}
+                        value={editedTask?.prioridade || ''}
                         onChange={(e) => handleFieldChange('prioridade', e.target.value)}
                         displayEmpty
                       >
@@ -280,10 +335,10 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
                     </FormControl>
                   ) : (
                     <Chip
-                      label={task.prioridade}
+                      label={currentTask?.prioridade}
                       size="small"
                       sx={{
-                        bgcolor: getPriorityColor(task.prioridade),
+                        bgcolor: getPriorityColor(currentTask?.prioridade),
                         color: 'white',
                         fontWeight: 'bold'
                       }}
@@ -297,9 +352,19 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
                   <Typography variant="body2" color="text.secondary">
                     Tipo:
                   </Typography>
-                  <Typography variant="body2">
-                    {task.tipoAtividade || 'Não especificado'}
-                  </Typography>
+                  {isEditing ? (
+                    <TextField
+                      size="small"
+                      value={editedTask?.tipoAtividade || ''}
+                      onChange={(e) => handleFieldChange('tipoAtividade', e.target.value)}
+                      sx={{ minWidth: 120 }}
+                      placeholder="Tipo da atividade"
+                    />
+                  ) : (
+                    <Typography variant="body2">
+                      {currentTask?.tipoAtividade || 'Não especificado'}
+                    </Typography>
+                  )}
                 </Box>
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -311,7 +376,7 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
                   {isEditing ? (
                     <TextField
                       size="small"
-                      value={editedTask.desenvolvedor || ''}
+                      value={editedTask?.desenvolvedor || ''}
                       onChange={(e) => handleFieldChange('desenvolvedor', e.target.value)}
                       sx={{ minWidth: 120 }}
                       placeholder="Nome do desenvolvedor"
@@ -319,10 +384,10 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
                   ) : (
                     <>
                       <Avatar sx={{ width: 20, height: 20, fontSize: '0.7rem' }}>
-                        {getInitials(task.desenvolvedor)}
+                        {getInitials(currentTask?.desenvolvedor)}
                       </Avatar>
                       <Typography variant="body2">
-                        {task.desenvolvedor}
+                        {currentTask?.desenvolvedor}
                       </Typography>
                     </>
                   )}
@@ -334,9 +399,19 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
                   <Typography variant="body2" color="text.secondary">
                     Sprint:
                   </Typography>
-                  <Typography variant="body2">
-                    {task.sprint || 'Não atribuído'}
-                  </Typography>
+                  {isEditing ? (
+                    <TextField
+                      size="small"
+                      value={editedTask?.sprint || ''}
+                      onChange={(e) => handleFieldChange('sprint', e.target.value)}
+                      sx={{ minWidth: 120 }}
+                      placeholder="Nome do sprint"
+                    />
+                  ) : (
+                    <Typography variant="body2">
+                      {currentTask?.sprint || 'Não atribuído'}
+                    </Typography>
+                  )}
                 </Box>
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -344,9 +419,26 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
                   <Typography variant="body2" color="text.secondary">
                     Tamanho:
                   </Typography>
-                  <Typography variant="body2">
-                    {task.tamanhoStory || 'Não definido'}
-                  </Typography>
+                  {isEditing ? (
+                    <FormControl size="small" sx={{ minWidth: 80 }}>
+                      <Select
+                        value={editedTask?.tamanhoStory || ''}
+                        onChange={(e) => handleFieldChange('tamanhoStory', e.target.value)}
+                        displayEmpty
+                      >
+                        <MenuItem value="">-</MenuItem>
+                        <MenuItem value="XS">XS</MenuItem>
+                        <MenuItem value="S">S</MenuItem>
+                        <MenuItem value="M">M</MenuItem>
+                        <MenuItem value="L">L</MenuItem>
+                        <MenuItem value="XL">XL</MenuItem>
+                      </Select>
+                    </FormControl>
+                  ) : (
+                    <Typography variant="body2">
+                      {currentTask?.tamanhoStory || 'Não definido'}
+                    </Typography>
+                  )}
                 </Box>
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -354,9 +446,19 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
                   <Typography variant="body2" color="text.secondary">
                     Tela:
                   </Typography>
-                  <Typography variant="body2">
-                    {task.tela || 'Não especificado'}
-                  </Typography>
+                  {isEditing ? (
+                    <TextField
+                      size="small"
+                      value={editedTask?.tela || ''}
+                      onChange={(e) => handleFieldChange('tela', e.target.value)}
+                      sx={{ minWidth: 120 }}
+                      placeholder="Nome da tela"
+                    />
+                  ) : (
+                    <Typography variant="body2">
+                      {currentTask?.tela || 'Não especificado'}
+                    </Typography>
+                  )}
                 </Box>
               </Grid>
             </Grid>
@@ -369,30 +471,46 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
             </Typography>
             <Paper sx={{ p: 2 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Estimativa:
+                  </Typography>
+                  {isEditing ? (
+                    <TextField
+                      type="number"
+                      size="small"
+                      value={editedTask?.estimativa || 0}
+                      onChange={(e) => handleFieldChange('estimativa', parseFloat(e.target.value) || 0)}
+                      sx={{ width: 80 }}
+                      inputProps={{ min: 0, step: 0.5 }}
+                    />
+                  ) : (
+                    <Typography variant="body2">
+                      {currentTask?.estimativa || 0}h
+                    </Typography>
+                  )}
+                </Box>
                 <Typography variant="body2" color="text.secondary">
-                  Estimativa: {task.estimativa || 0}h
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Trabalhado: {task.horasMedidas || 0}h
+                  Trabalhado: {currentTask?.horasMedidas || 0}h
                 </Typography>
               </Box>
-              {task.estimativa > 0 && (
+              {(currentTask?.estimativa > 0) && (
                 <LinearProgress
                   variant="determinate"
-                  value={Math.min(((task.horasMedidas || 0) / task.estimativa) * 100, 100)}
+                  value={Math.min(((currentTask?.horasMedidas || 0) / currentTask?.estimativa) * 100, 100)}
                   sx={{
                     height: 8,
                     borderRadius: 4,
                     '& .MuiLinearProgress-bar': {
-                      bgcolor: task.horasMedidas > task.estimativa ? 'error.main' : 'success.main'
+                      bgcolor: (currentTask?.horasMedidas || 0) > (currentTask?.estimativa || 0) ? 'error.main' : 'success.main'
                     }
                   }}
                 />
               )}
               <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                {task.horasMedidas > task.estimativa ? 
-                  `${((task.horasMedidas / task.estimativa - 1) * 100).toFixed(1)}% acima da estimativa` :
-                  `${((task.horasMedidas || 0) / task.estimativa * 100).toFixed(1)}% concluído`
+                {(currentTask?.horasMedidas || 0) > (currentTask?.estimativa || 1) ? 
+                  `${(((currentTask?.horasMedidas || 0) / (currentTask?.estimativa || 1) - 1) * 100).toFixed(1)}% acima da estimativa` :
+                  `${(((currentTask?.horasMedidas || 0) / (currentTask?.estimativa || 1)) * 100).toFixed(1)}% concluído`
                 }
               </Typography>
             </Paper>
@@ -411,7 +529,7 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
                       Tempo Gasto:
                     </Typography>
                     <Typography variant="body2" fontWeight="bold">
-                      {task.tempoGasto ? `${task.tempoGasto}h` : 'Não informado'}
+                      {currentTask?.tempoGasto ? `${currentTask.tempoGasto}h` : 'Não informado'}
                     </Typography>
                   </Box>
                 </Grid>
@@ -423,26 +541,26 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
                     <Typography 
                       variant="body2" 
                       fontWeight="bold"
-                      color={task.taxaErro > 20 ? 'error.main' : 'success.main'}
+                      color={(currentTask?.taxaErro || 0) > 20 ? 'error.main' : 'success.main'}
                     >
-                      {task.taxaErro ? `${task.taxaErro.toFixed(1)}%` : 'Não calculada'}
+                      {currentTask?.taxaErro ? `${currentTask.taxaErro.toFixed(1)}%` : 'Não calculada'}
                     </Typography>
                   </Box>
                 </Grid>
               </Grid>
               
-              {task.motivoErro && (
+              {currentTask?.motivoErro && (
                 <Box sx={{ mt: 2, p: 1, bgcolor: 'warning.light', borderRadius: 1 }}>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
                     <strong>Motivo da Taxa de Erro:</strong>
                   </Typography>
                   <Typography variant="body2">
-                    {task.motivoErro}
+                    {currentTask?.motivoErro}
                   </Typography>
                 </Box>
               )}
               
-              {task.status === 'Done' && !task.tempoGastoValidado && (
+              {currentTask?.status === 'Done' && !currentTask?.tempoGastoValidado && (
                 <Box sx={{ mt: 2, p: 1, bgcolor: 'error.light', borderRadius: 1 }}>
                   <Typography variant="body2" color="error.main">
                     ⚠️ Tarefa finalizada sem validação de tempo gasto
@@ -450,7 +568,7 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
                 </Box>
               )}
               
-              {task.status !== 'Done' && (
+              {currentTask?.status !== 'Done' && (
                 <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
                   💡 O tempo gasto será solicitado ao finalizar a tarefa
                 </Typography>
@@ -459,57 +577,73 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
           </Box>
 
           {/* Observações */}
-          {task.observacoes && (
+          {(currentTask?.observacoes || isEditing) && (
             <Box>
               <Typography variant="subtitle1" gutterBottom fontWeight="bold">
                 Observações
               </Typography>
-              <Paper sx={{ p: 2, bgcolor: 'warning.light', color: 'warning.contrastText' }}>
-                <Typography variant="body1">
-                  {task.observacoes}
-                </Typography>
-              </Paper>
+              {isEditing ? (
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={3}
+                  value={editedTask?.observacoes || ''}
+                  onChange={(e) => handleFieldChange('observacoes', e.target.value)}
+                  variant="outlined"
+                  placeholder="Adicione observações sobre a tarefa..."
+                />
+              ) : (
+                <Paper sx={{ p: 2, bgcolor: 'warning.light', color: 'warning.contrastText' }}>
+                  <Typography variant="body1">
+                    {currentTask?.observacoes}
+                  </Typography>
+                </Paper>
+              )}
             </Box>
           )}
 
-          {/* Status e Movimentação */}
-          <Box>
-            <Typography variant="subtitle1" gutterBottom fontWeight="bold">
-              Status e Movimentação
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              {columns.map((column) => (
-                <Button
-                  key={column.id}
-                  variant={task.status === column.id ? 'contained' : 'outlined'}
-                  size="small"
-                  onClick={() => handleMoveTask(column.id)}
-                  sx={{ minWidth: 100 }}
-                >
-                  {column.title}
-                </Button>
-              ))}
+          {/* Status e Movimentação - só para tarefas existentes */}
+          {!isNewTask && (
+            <Box>
+              <Typography variant="subtitle1" gutterBottom fontWeight="bold">
+                Status e Movimentação
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {columns.map((column) => (
+                  <Button
+                    key={column.id}
+                    variant={currentTask?.status === column.id ? 'contained' : 'outlined'}
+                    size="small"
+                    onClick={() => handleMoveTask(column.id)}
+                    sx={{ minWidth: 100 }}
+                  >
+                    {column.title}
+                  </Button>
+                ))}
+              </Box>
             </Box>
-          </Box>
+          )}
 
-          {/* Timestamps */}
-          <Box>
-            <Typography variant="subtitle1" gutterBottom fontWeight="bold">
-              Informações de Sistema
-            </Typography>
-            <Grid container spacing={1}>
-              <Grid item xs={12} sm={6}>
-                <Typography variant="caption" color="text.secondary">
-                  Criado em: {new Date(task.createdAt).toLocaleString('pt-BR')}
-                </Typography>
+          {/* Timestamps - só para tarefas existentes */}
+          {!isNewTask && (
+            <Box>
+              <Typography variant="subtitle1" gutterBottom fontWeight="bold">
+                Informações de Sistema
+              </Typography>
+              <Grid container spacing={1}>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="caption" color="text.secondary">
+                    Criado em: {new Date(currentTask?.createdAt).toLocaleString('pt-BR')}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="caption" color="text.secondary">
+                    Atualizado em: {new Date(currentTask?.updatedAt).toLocaleString('pt-BR')}
+                  </Typography>
+                </Grid>
               </Grid>
-              <Grid item xs={12} sm={6}>
-                <Typography variant="caption" color="text.secondary">
-                  Atualizado em: {new Date(task.updatedAt).toLocaleString('pt-BR')}
-                </Typography>
-              </Grid>
-            </Grid>
-          </Box>
+            </Box>
+          )}
         </Stack>
       </DialogContent>
       
@@ -522,9 +656,10 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
             onClick={handleSave} 
             color="primary" 
             variant="contained"
-            disabled={!editedTask?.userStory?.trim()}
+            disabled={!editedTask?.atividade?.trim() && !editedTask?.userStory?.trim()}
+            startIcon={isNewTask ? <AddIcon /> : <EditIcon />}
           >
-            Salvar Alterações
+            {isNewTask ? 'Criar Tarefa' : 'Salvar Alterações'}
           </Button>
         )}
       </DialogActions>
@@ -1078,6 +1213,7 @@ const SimpleKanban = ({ tasks, onTasksUpdate }) => {
     details: '',
     suggestion: ''
   });
+  const [newTaskModal, setNewTaskModal] = useState(false);
 
   useEffect(() => {
     let filtered = tasks;
@@ -1300,6 +1436,16 @@ const SimpleKanban = ({ tasks, onTasksUpdate }) => {
           <IconButton onClick={clearFilters} size="small">
             <ClearIcon />
           </IconButton>
+          
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setNewTaskModal(true)}
+            size="small"
+            sx={{ ml: 2, minWidth: 140 }}
+          >
+            Nova Tarefa
+          </Button>
         </Box>
       </Box>
 
@@ -1331,6 +1477,21 @@ const SimpleKanban = ({ tasks, onTasksUpdate }) => {
         details={wipAlertModal.details}
         suggestion={wipAlertModal.suggestion}
         onClose={() => setWipAlertModal({ open: false, message: '', details: '', suggestion: '' })}
+      />
+      
+      <TaskDetailsModal
+        task={null}
+        open={newTaskModal}
+        onClose={() => setNewTaskModal(false)}
+        onStatusChange={() => {}}
+        onTasksUpdate={(newTask, isNewTask) => {
+          if (isNewTask) {
+            // Adicionar nova tarefa à lista
+            const updatedTasks = [...tasks, newTask];
+            onTasksUpdate(updatedTasks);
+          }
+        }}
+        isNewTask={true}
       />
     </Box>
   );
