@@ -45,7 +45,9 @@ import {
   Close as CloseIcon,
   Edit as EditIcon,
   Schedule as ScheduleIcon,
-  Category as CategoryIcon
+  Category as CategoryIcon,
+  ViewCompact as ViewCompactIcon,
+  ViewList as ViewListIcon
 } from '@mui/icons-material';
 
 const columns = [
@@ -530,7 +532,162 @@ const TaskDetailsModal = ({ task, open, onClose, onStatusChange, onTasksUpdate }
   );
 };
 
-const TaskCard = ({ task, onStatusChange, onTasksUpdate, allTasks }) => {
+const CompactTaskCard = ({ task, onStatusChange, onTasksUpdate, allTasks }) => {
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const getInitials = (name) => {
+    if (!name) return '';
+    return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
+  };
+
+  const handleCardClick = (e) => {
+    if (e.target.closest('button')) return;
+    setDetailsOpen(true);
+  };
+
+  const handleMoveTask = (newStatus) => {
+    onStatusChange(task.id, newStatus);
+    setDetailsOpen(false);
+  };
+
+  const getNextStatus = () => {
+    const currentIndex = columns.findIndex(col => col.id === task.status);
+    if (currentIndex < columns.length - 1) {
+      return columns[currentIndex + 1].id;
+    }
+    return null;
+  };
+
+  const getPreviousStatus = () => {
+    const currentIndex = columns.findIndex(col => col.id === task.status);
+    if (currentIndex > 0) {
+      return columns[currentIndex - 1].id;
+    }
+    return null;
+  };
+
+  const nextStatus = getNextStatus();
+  const previousStatus = getPreviousStatus();
+
+  return (
+    <>
+      <Card 
+        onClick={handleCardClick}
+        sx={{ 
+          mb: 0.5, 
+          cursor: 'pointer',
+          minHeight: 48,
+          '&:hover': { 
+            boxShadow: 2,
+            transform: 'translateY(-1px)',
+            transition: 'all 0.2s ease-in-out'
+          },
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 1
+        }}
+      >
+        <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {/* Lado esquerdo: Atividade */}
+            <Box sx={{ flex: 1, mr: 1 }}>
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  fontWeight: 'medium',
+                  fontSize: '0.875rem',
+                  lineHeight: 1.2,
+                  color: 'text.primary',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {task.atividade || task.userStory}
+              </Typography>
+            </Box>
+            
+            {/* Centro: Avatar do desenvolvedor */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: 1 }}>
+              <Avatar
+                sx={{ 
+                  width: 28, 
+                  height: 28, 
+                  fontSize: '0.75rem',
+                  bgcolor: 'primary.main'
+                }}
+              >
+                {getInitials(task.desenvolvedor)}
+              </Avatar>
+            </Box>
+            
+            {/* Lado direito: Botões de navegação */}
+            <Box sx={{ display: 'flex', gap: 0.25 }}>
+              {previousStatus && (
+                <Tooltip title={`← ${previousStatus}`}>
+                  <IconButton 
+                    size="small" 
+                    onClick={() => handleMoveTask(previousStatus)}
+                    sx={{ 
+                      p: 0.25, 
+                      width: 24,
+                      height: 24,
+                      bgcolor: 'action.hover',
+                      '&:hover': { bgcolor: 'action.selected' }
+                    }}
+                  >
+                    <ArrowBackIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+              {nextStatus && (
+                <Tooltip title={`${nextStatus} →`}>
+                  <IconButton 
+                    size="small" 
+                    onClick={() => handleMoveTask(nextStatus)}
+                    sx={{ 
+                      p: 0.25, 
+                      width: 24,
+                      height: 24,
+                      bgcolor: 'action.hover',
+                      '&:hover': { bgcolor: 'action.selected' }
+                    }}
+                  >
+                    <ArrowForwardIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
+
+      <TaskDetailsModal
+        task={task}
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        onStatusChange={onStatusChange}
+        onTasksUpdate={(updatedTask) => {
+          const updatedTasks = allTasks.map(t => 
+            t.id === updatedTask.id ? { ...updatedTask, updatedAt: new Date().toISOString() } : t
+          );
+          onTasksUpdate(updatedTasks);
+        }}
+      />
+    </>
+  );
+};
+
+const TaskCard = ({ task, onStatusChange, onTasksUpdate, allTasks, compactMode = false }) => {
+  if (compactMode) {
+    return (
+      <CompactTaskCard
+        task={task}
+        onStatusChange={onStatusChange}
+        onTasksUpdate={onTasksUpdate}
+        allTasks={allTasks}
+      />
+    );
+  }
   const [detailsOpen, setDetailsOpen] = useState(false);
   const getPriorityColor = (priority) => priorityColors[priority] || '#757575';
   const getEpicColor = (epic) => epicColors[epic] || '#666666';
@@ -789,7 +946,7 @@ const TaskCard = ({ task, onStatusChange, onTasksUpdate, allTasks }) => {
   );
 };
 
-const EpicGroup = ({ epic, tasks, onStatusChange, onTasksUpdate, allTasks }) => {
+const EpicGroup = ({ epic, tasks, onStatusChange, onTasksUpdate, allTasks, compactMode = false }) => {
   const [expanded, setExpanded] = useState(true);
   const epicColor = epicColors[epic] || '#666666';
   
@@ -855,6 +1012,7 @@ const EpicGroup = ({ epic, tasks, onStatusChange, onTasksUpdate, allTasks }) => 
               onStatusChange={onStatusChange} 
               onTasksUpdate={onTasksUpdate}
               allTasks={allTasks}
+              compactMode={compactMode}
             />
           ))}
         </Box>
@@ -863,7 +1021,7 @@ const EpicGroup = ({ epic, tasks, onStatusChange, onTasksUpdate, allTasks }) => 
   );
 };
 
-const KanbanColumn = ({ column, tasks, onStatusChange, onTasksUpdate, allTasks }) => {
+const KanbanColumn = ({ column, tasks, onStatusChange, onTasksUpdate, allTasks, compactMode = false }) => {
   // Agrupar tarefas por épico
   const tasksByEpic = tasks.reduce((acc, task) => {
     const epic = task.epico || 'Sem Épico';
@@ -892,6 +1050,7 @@ const KanbanColumn = ({ column, tasks, onStatusChange, onTasksUpdate, allTasks }
             onStatusChange={onStatusChange}
             onTasksUpdate={onTasksUpdate}
             allTasks={allTasks}
+            compactMode={compactMode}
           />
         ))}
       </Box>
@@ -901,6 +1060,7 @@ const KanbanColumn = ({ column, tasks, onStatusChange, onTasksUpdate, allTasks }
 
 const SimpleKanban = ({ tasks, onTasksUpdate }) => {
   const [filteredTasks, setFilteredTasks] = useState(tasks);
+  const [compactMode, setCompactMode] = useState(false);
   const [filters, setFilters] = useState({
     sprint: '',
     desenvolvedor: '',
@@ -1123,6 +1283,20 @@ const SimpleKanban = ({ tasks, onTasksUpdate }) => {
             placeholder="Digite para buscar..."
           />
           
+          <Tooltip title={compactMode ? "Versão Expandida" : "Versão Compacta"}>
+            <IconButton 
+              onClick={() => setCompactMode(!compactMode)} 
+              size="small"
+              color={compactMode ? "primary" : "default"}
+              sx={{ 
+                bgcolor: compactMode ? 'primary.light' : 'transparent',
+                '&:hover': { bgcolor: compactMode ? 'primary.main' : 'action.hover' }
+              }}
+            >
+              {compactMode ? <ViewListIcon /> : <ViewCompactIcon />}
+            </IconButton>
+          </Tooltip>
+          
           <IconButton onClick={clearFilters} size="small">
             <ClearIcon />
           </IconButton>
@@ -1138,6 +1312,7 @@ const SimpleKanban = ({ tasks, onTasksUpdate }) => {
               onStatusChange={handleStatusChange}
               onTasksUpdate={onTasksUpdate}
               allTasks={filteredTasks}
+              compactMode={compactMode}
             />
           </Grid>
         ))}
