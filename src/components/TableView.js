@@ -97,7 +97,8 @@ const TableView = ({ tasks, onTasksUpdate }) => {
     prioridade: '',
     status: '',
     epico: '',
-    search: ''
+    search: '',
+    searchId: ''
   });
   
   const [teamConfig, setTeamConfig] = useState({
@@ -152,31 +153,25 @@ const TableView = ({ tasks, onTasksUpdate }) => {
           newReestimativas.push(task.estimativa || 0);
         }
         
-        const newValue = parseFloat(value) || 0;
+        const newValue = isNaN(parseFloat(value)) ? 0 : parseFloat(value);
         
-        // Se for Dia 1 (índice 0), atualizar a estimativa inicial
-        let updatedTask = { ...task };
-        if (dayIndex === 0) {
-          updatedTask.estimativa = newValue;
-        } else {
-          // Para outros dias, definir o valor nas reestimativas
-          newReestimativas[dayIndex] = newValue;
-        }
+        // Definir o valor no dia específico (NUNCA alterar estimativa inicial)
+        newReestimativas[dayIndex] = newValue;
         
-        // Se o valor for zero, zerar todas as posições seguintes
+        // Se o valor for zero, zerar APENAS os dias subsequentes
         if (newValue === 0) {
           for (let i = dayIndex + 1; i < 10; i++) {
             newReestimativas[i] = 0;
           }
         } else {
-          // Replicar o valor para todos os dias subsequentes (comportamento normal)
+          // Replicar o valor APENAS para os dias subsequentes
           for (let i = dayIndex + 1; i < 10; i++) {
             newReestimativas[i] = newValue;
           }
         }
         
         return { 
-          ...updatedTask, 
+          ...task, 
           reestimativas: newReestimativas, 
           updatedAt: new Date().toISOString() 
         };
@@ -218,7 +213,7 @@ const TableView = ({ tasks, onTasksUpdate }) => {
   };
 
   const clearFilters = () => {
-    setFilters({ sprint: '', desenvolvedor: '', prioridade: '', status: '', epico: '', search: '' });
+    setFilters({ sprint: '', desenvolvedor: '', prioridade: '', status: '', epico: '', search: '', searchId: '' });
   };
 
   const getUniqueValues = (field) => {
@@ -444,6 +439,12 @@ const TableView = ({ tasks, onTasksUpdate }) => {
               value && value.toString().toLowerCase().includes(searchTerm)
             )
           );
+        } else if (key === 'searchId') {
+          const idTerm = filters[key].replace('#', '').toLowerCase();
+          filtered = filtered.filter(task => 
+            (task.originalId && task.originalId.toString().toLowerCase() === idTerm) ||
+            (task.id && task.id.toString().toLowerCase() === idTerm)
+          );
         } else {
           filtered = filtered.filter(task => task[key] === filters[key]);
         }
@@ -458,8 +459,12 @@ const TableView = ({ tasks, onTasksUpdate }) => {
       if (aValue == null) aValue = '';
       if (bValue == null) bValue = '';
       
-      // Converter para string apenas se ambos forem strings
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
+      // Tratamento especial para campos numéricos
+      if (sortBy === 'originalId' || sortBy === 'estimativa') {
+        aValue = parseFloat(aValue) || 0;
+        bValue = parseFloat(bValue) || 0;
+      } else if (typeof aValue === 'string' && typeof bValue === 'string') {
+        // Converter para string apenas se ambos forem strings (exceto originalId)
         aValue = aValue.toLowerCase();
         bValue = bValue.toLowerCase();
       }
@@ -1061,6 +1066,15 @@ const TableView = ({ tasks, onTasksUpdate }) => {
           </TextField>
           
           <TextField
+            label="Buscar por ID"
+            value={filters.searchId}
+            onChange={(e) => handleFilterChange('searchId', e.target.value)}
+            size="small"
+            sx={{ minWidth: 60 }}
+            placeholder="#123..."
+          />
+          
+          <TextField
             label="Buscar em todos os campos"
             value={filters.search}
             onChange={(e) => handleFilterChange('search', e.target.value)}
@@ -1085,9 +1099,9 @@ const TableView = ({ tasks, onTasksUpdate }) => {
             <TableRow>
               <TableCell sx={{ width: '30%', minWidth: 200 }}>
                 <TableSortLabel
-                  active={sortBy === 'atividade'}
-                  direction={sortBy === 'atividade' ? sortDirection : 'asc'}
-                  onClick={() => handleSort('atividade')}
+                  active={sortBy === 'originalId'}
+                  direction={sortBy === 'originalId' ? sortDirection : 'asc'}
+                  onClick={() => handleSort('originalId')}
                 >
                   Atividade
                 </TableSortLabel>
@@ -1186,7 +1200,7 @@ const TableView = ({ tasks, onTasksUpdate }) => {
                       }
                     }}
                   >
-                    {task.atividade || 'Sem atividade'}
+                    #{task.originalId} - {task.atividade || 'Sem atividade'}
                   </Link>
                 </TableCell>
                 <TableCell sx={{ padding: '8px 4px' }}>
@@ -1230,12 +1244,10 @@ const TableView = ({ tasks, onTasksUpdate }) => {
                 </TableCell>
                 {Array.from({ length: 10 }, (_, i) => {
                   const taskWithReestimativas = ensureReestimativas(task);
-                  // Dia 1 (índice 0) sempre usa a estimativa inicial
-                  const currentValue = i === 0 
-                    ? task.estimativa || 0
-                    : (taskWithReestimativas.reestimativas && taskWithReestimativas.reestimativas[i] !== undefined 
-                        ? taskWithReestimativas.reestimativas[i] 
-                        : task.estimativa || 0);
+                  // Usar sempre o valor das reestimativas para todos os dias (incluindo Dia 1)
+                  const currentValue = (taskWithReestimativas.reestimativas && taskWithReestimativas.reestimativas[i] !== undefined) 
+                    ? taskWithReestimativas.reestimativas[i] 
+                    : (task.estimativa || 0);
                   
                   return (
                     <TableCell key={i} sx={{ textAlign: 'center', padding: '8px 2px' }}>
