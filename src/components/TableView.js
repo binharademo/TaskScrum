@@ -108,6 +108,10 @@ const TableView = ({ tasks, onTasksUpdate }) => {
   });
   
   const [activeTab, setActiveTab] = useState(0);
+  const [timeValidationModal, setTimeValidationModal] = useState({
+    open: false,
+    task: null
+  });
 
   const handleSort = (field) => {
     const isAsc = sortBy === field && sortDirection === 'asc';
@@ -142,6 +146,9 @@ const TableView = ({ tasks, onTasksUpdate }) => {
   };
 
   const handleReestimativaChange = (taskId, dayIndex, value) => {
+    const newValue = isNaN(parseFloat(value)) ? 0 : parseFloat(value);
+    
+    // Primeiro, criar as tarefas atualizadas
     const updatedTasks = tasks.map(task => {
       if (task.id === taskId) {
         // Garantir que existe um array de reestimativas
@@ -152,8 +159,6 @@ const TableView = ({ tasks, onTasksUpdate }) => {
         while (newReestimativas.length < 10) {
           newReestimativas.push(task.estimativa || 0);
         }
-        
-        const newValue = isNaN(parseFloat(value)) ? 0 : parseFloat(value);
         
         // Definir o valor no dia específico (NUNCA alterar estimativa inicial)
         newReestimativas[dayIndex] = newValue;
@@ -178,8 +183,19 @@ const TableView = ({ tasks, onTasksUpdate }) => {
       }
       return task;
     });
+    
+    // Atualizar as tarefas primeiro
     onTasksUpdate(updatedTasks);
     setShowSaveMessage(true);
+    
+    // Se o valor for zero, abrir modal de tempo gasto
+    if (newValue === 0) {
+      const updatedTask = updatedTasks.find(task => task.id === taskId);
+      setTimeValidationModal({
+        open: true,
+        task: updatedTask
+      });
+    }
     
     // Forçar atualização do gráfico imediatamente
     if (selectedSprint) {
@@ -628,6 +644,30 @@ const TableView = ({ tasks, onTasksUpdate }) => {
       onTasksUpdate(updatedTasks);
       setShowSaveMessage(true);
       setDetailsOpen(false);
+    }
+  };
+
+  const handleTimeValidationSave = (updatedTask) => {
+    // Atualizar tarefa com tempo gasto e alterar status para Done
+    const tasksWithUpdate = tasks.map(task => 
+      task.id === updatedTask.id 
+        ? { 
+            ...updatedTask, 
+            status: 'Done',
+            tempoGastoValidado: true,
+            updatedAt: new Date().toISOString() 
+          }
+        : task
+    );
+    
+    onTasksUpdate(tasksWithUpdate);
+    setTimeValidationModal({ open: false, task: null });
+    setShowSaveMessage(true);
+    
+    // Forçar atualização do gráfico
+    if (selectedSprint) {
+      const data = calculateSprintData(selectedSprint);
+      setChartData(data);
     }
   };
 
@@ -1487,7 +1527,132 @@ const TableView = ({ tasks, onTasksUpdate }) => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Modal de Validação de Tempo Gasto */}
+      <TimeValidationModal
+        open={timeValidationModal.open}
+        task={timeValidationModal.task}
+        onClose={() => setTimeValidationModal({ open: false, task: null })}
+        onSave={handleTimeValidationSave}
+      />
     </Box>
+  );
+};
+
+// Componente Modal de Validação de Tempo Gasto
+const TimeValidationModal = ({ open, task, onClose, onSave }) => {
+  const [tempoGasto, setTempoGasto] = useState('');
+  const [motivoErro, setMotivoErro] = useState('');
+
+  useEffect(() => {
+    if (task) {
+      setTempoGasto(task.tempoGasto || '');
+      setMotivoErro(task.motivoErro || '');
+    }
+  }, [task]);
+
+  if (!task) return null;
+
+  const taxaErro = tempoGasto && task.estimativa ? 
+    ((tempoGasto / task.estimativa - 1) * 100) : 0;
+  const taxaErroPositiva = Math.max(0, taxaErro);
+
+  const handleSave = () => {
+    const updatedTask = {
+      ...task,
+      tempoGasto: parseFloat(tempoGasto),
+      taxaErro: taxaErroPositiva,
+      motivoErro: taxaErroPositiva > 20 ? motivoErro : null
+    };
+    onSave(updatedTask);
+    setTempoGasto('');
+    setMotivoErro('');
+  };
+
+  const isValid = tempoGasto && (taxaErroPositiva <= 20 || motivoErro.trim());
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="h6">Validação Obrigatória - Tempo Gasto</Typography>
+        </Box>
+      </DialogTitle>
+      <DialogContent>
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Para finalizar a tarefa <strong>"{task.atividade}"</strong>, é obrigatório informar o tempo gasto.
+        </Alert>
+        
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            Estimativa inicial: {task.estimativa}h
+          </Typography>
+        </Box>
+        
+        <TextField
+          fullWidth
+          required
+          type="number"
+          label="Tempo Gasto (horas)"
+          value={tempoGasto}
+          onChange={(e) => setTempoGasto(e.target.value)}
+          sx={{ mb: 2 }}
+          inputProps={{ min: 0.1, step: 0.1 }}
+          helperText="Informe o tempo efetivamente gasto na tarefa"
+        />
+        
+        <TextField
+          fullWidth
+          label="Taxa de Erro Calculada"
+          value={`${taxaErroPositiva.toFixed(1)}%`}
+          InputProps={{ readOnly: true }}
+          sx={{ 
+            mb: 2,
+            '& .MuiInputBase-input': { 
+              color: taxaErroPositiva > 20 ? 'error.main' : 'success.main',
+              fontWeight: 'bold'
+            }
+          }}
+          helperText={taxaErroPositiva > 20 ? 
+            'Taxa de erro elevada - necessário explicar o motivo' : 
+            'Taxa de erro dentro do esperado'
+          }
+        />
+        
+        {taxaErroPositiva > 20 && (
+          <TextField
+            fullWidth
+            required
+            multiline
+            rows={3}
+            label="Motivo da Taxa de Erro Elevada"
+            value={motivoErro}
+            onChange={(e) => setMotivoErro(e.target.value)}
+            placeholder="Explique o motivo da taxa de erro (complexidade imprevista, mudanças de requisitos, bugs, etc.)"
+            helperText="Obrigatório para taxas de erro acima de 20%"
+          />
+        )}
+        
+        <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            💡 <strong>Dica:</strong> O tempo gasto ajuda a melhorar estimativas futuras e identificar padrões de trabalho.
+          </Typography>
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} color="inherit">
+          Cancelar
+        </Button>
+        <Button 
+          onClick={handleSave} 
+          variant="contained"
+          disabled={!isValid}
+          sx={{ minWidth: 140 }}
+        >
+          Finalizar Tarefa
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 
