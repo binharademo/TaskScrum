@@ -674,6 +674,8 @@ const CompactTaskCard = ({ task, onStatusChange, onTasksUpdate, allTasks }) => {
     return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
   };
 
+  const getPriorityColor = (priority) => priorityColors[priority] || '#757575';
+
   const handleCardClick = (e) => {
     if (e.target.closest('button')) return;
     setDetailsOpen(true);
@@ -722,32 +724,73 @@ const CompactTaskCard = ({ task, onStatusChange, onTasksUpdate, allTasks }) => {
         }}
       >
         <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
+          {/* Primeira linha: ID + Atividade */}
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+            <Typography 
+              variant="caption" 
+              sx={{ 
+                color: 'text.secondary',
+                fontWeight: 'bold',
+                mr: 1,
+                minWidth: 'fit-content'
+              }}
+            >
+              #{task.originalId}
+            </Typography>
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                fontWeight: 'medium',
+                fontSize: '0.875rem',
+                lineHeight: 1.2,
+                color: 'text.primary',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                flex: 1
+              }}
+            >
+              {task.atividade || task.userStory}
+            </Typography>
+          </Box>
+          
+          {/* Segunda linha: Prioridade + Horas + Responsável + Botões */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            {/* Lado esquerdo: Atividade */}
-            <Box sx={{ flex: 1, mr: 1 }}>
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  fontWeight: 'medium',
-                  fontSize: '0.875rem',
-                  lineHeight: 1.2,
-                  color: 'text.primary',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
+            {/* Lado esquerdo: Prioridade e Horas */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1, mr: 1 }}>
+              <Chip
+                label={task.prioridade}
+                size="small"
+                sx={{
+                  bgcolor: getPriorityColor(task.prioridade),
+                  color: 'white',
+                  fontSize: '0.6rem',
+                  fontWeight: 'bold',
+                  height: 16,
+                  minWidth: 'fit-content'
                 }}
-              >
-                {task.atividade || task.userStory}
-              </Typography>
+              />
+              {task.estimativa > 0 && (
+                <Typography 
+                  variant="caption" 
+                  sx={{ 
+                    color: 'text.secondary',
+                    fontSize: '0.7rem',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {task.estimativa}h
+                </Typography>
+              )}
             </Box>
             
             {/* Centro: Avatar do desenvolvedor */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: 1 }}>
               <Avatar
                 sx={{ 
-                  width: 28, 
-                  height: 28, 
-                  fontSize: '0.75rem',
+                  width: 20, 
+                  height: 20, 
+                  fontSize: '0.65rem',
                   bgcolor: 'primary.main'
                 }}
               >
@@ -764,13 +807,13 @@ const CompactTaskCard = ({ task, onStatusChange, onTasksUpdate, allTasks }) => {
                     onClick={() => handleMoveTask(previousStatus)}
                     sx={{ 
                       p: 0.25, 
-                      width: 24,
-                      height: 24,
+                      width: 20,
+                      height: 20,
                       bgcolor: 'action.hover',
                       '&:hover': { bgcolor: 'action.selected' }
                     }}
                   >
-                    <ArrowBackIcon sx={{ fontSize: 14 }} />
+                    <ArrowBackIcon sx={{ fontSize: 12 }} />
                   </IconButton>
                 </Tooltip>
               )}
@@ -781,13 +824,13 @@ const CompactTaskCard = ({ task, onStatusChange, onTasksUpdate, allTasks }) => {
                     onClick={() => handleMoveTask(nextStatus)}
                     sx={{ 
                       p: 0.25, 
-                      width: 24,
-                      height: 24,
+                      width: 20,
+                      height: 20,
                       bgcolor: 'action.hover',
                       '&:hover': { bgcolor: 'action.selected' }
                     }}
                   >
-                    <ArrowForwardIcon sx={{ fontSize: 14 }} />
+                    <ArrowForwardIcon sx={{ fontSize: 12 }} />
                   </IconButton>
                 </Tooltip>
               )}
@@ -1201,7 +1244,8 @@ const SimpleKanban = ({ tasks, onTasksUpdate }) => {
     desenvolvedor: '',
     prioridade: '',
     epico: '',
-    search: ''
+    search: '',
+    searchId: ''
   });
   const [timeValidationModal, setTimeValidationModal] = useState({
     open: false,
@@ -1229,6 +1273,13 @@ const SimpleKanban = ({ tasks, onTasksUpdate }) => {
     }
     if (filters.epico) {
       filtered = filtered.filter(task => task.epico === filters.epico);
+    }
+    if (filters.searchId) {
+      const idTerm = filters.searchId.replace('#', '').toLowerCase();
+      filtered = filtered.filter(task => 
+        (task.originalId && task.originalId.toString().toLowerCase() === idTerm) ||
+        (task.id && task.id.toString().toLowerCase() === idTerm)
+      );
     }
     if (filters.search) {
       const searchTerm = filters.search.toLowerCase();
@@ -1303,7 +1354,7 @@ const SimpleKanban = ({ tasks, onTasksUpdate }) => {
   };
 
   const clearFilters = () => {
-    setFilters({ sprint: '', desenvolvedor: '', prioridade: '', epico: '', search: '' });
+    setFilters({ sprint: '', desenvolvedor: '', prioridade: '', epico: '', search: '', searchId: '' });
   };
 
   const getUniqueValues = (field) => {
@@ -1409,6 +1460,15 @@ const SimpleKanban = ({ tasks, onTasksUpdate }) => {
               <MenuItem key={priority} value={priority}>{priority}</MenuItem>
             ))}
           </TextField>
+          
+          <TextField
+            label="Buscar por ID"
+            value={filters.searchId}
+            onChange={(e) => handleFilterChange('searchId', e.target.value)}
+            size="small"
+            sx={{ minWidth: 60 }}
+            placeholder="#123..."
+          />
           
           <TextField
             label="Buscar em todos os campos"
