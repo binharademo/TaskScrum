@@ -41,8 +41,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
 
 const WIPControl = ({ tasks, onTasksUpdate }) => {
   const [wipLimits, setWipLimits] = useState({
-    'Priorizado': 10,
-    'Doing': 8,
+    'Priorizado': 3,
+    'Doing': 6,
     'Done': null
   });
   const [showSettings, setShowSettings] = useState(false);
