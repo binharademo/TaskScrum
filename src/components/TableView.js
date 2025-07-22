@@ -53,6 +53,17 @@ import {
   TimeScale
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip as RechartsTooltip, 
+  ResponsiveContainer,
+  ScatterChart,
+  Scatter
+} from 'recharts';
 import { format, differenceInDays, addDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { exportToExcel } from '../utils/excelImport';
@@ -863,10 +874,6 @@ const TableView = ({ tasks, onTasksUpdate }) => {
       {/* Abas Principais */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)} sx={{ mb: 3 }}>
-            <Tab label="📈 Burndown Chart" />
-          </Tabs>
-          
           {/* Burndown Chart */}
           {(
             <Box>
@@ -1536,6 +1543,232 @@ const TableView = ({ tasks, onTasksUpdate }) => {
         onSave={handleTimeValidationSave}
       />
     </Box>
+  );
+};
+
+// Componente de Análise Preditiva
+const AnalisisPreditivaContent = ({ tasks, selectedSprint }) => {
+  // Filtrar tarefas do sprint selecionado que têm tempo gasto
+  const tasksWithTimeSpent = tasks.filter(task => 
+    task.tempoGasto && 
+    task.tempoGastoValidado && 
+    (!selectedSprint || task.sprint === selectedSprint)
+  );
+
+  // Calcular dados para gráficos
+  const estimativeVsRealData = tasksWithTimeSpent.map(task => ({
+    id: task.originalId,
+    atividade: task.atividade,
+    estimativa: task.estimativa,
+    tempoReal: task.tempoGasto,
+    taxaErro: task.taxaErro || 0,
+    motivoErro: task.motivoErro,
+    desenvolvedor: task.desenvolvedor
+  }));
+
+  // Separar tarefas por qualidade de estimativa
+  const estimativasPrecisas = estimativeVsRealData.filter(task => Math.abs(task.taxaErro) <= 20);
+  const estimativasRuins = estimativeVsRealData.filter(task => task.taxaErro > 20);
+  const estimativasOtimas = estimativeVsRealData.filter(task => task.taxaErro < -10); // Subestimadas
+
+  // Dados para gráfico de barras (Estimativa vs Real)
+  const barChartData = estimativeVsRealData.slice(0, 10).map(task => ({
+    name: `#${task.id}`,
+    Estimativa: task.estimativa,
+    'Tempo Real': task.tempoReal,
+    taxaErro: task.taxaErro
+  }));
+
+  // Dados para gráfico scatter (Taxa de Erro vs Estimativa)
+  const scatterData = estimativeVsRealData.map(task => ({
+    x: task.estimativa,
+    y: task.taxaErro,
+    id: task.id,
+    atividade: task.atividade,
+    motivoErro: task.motivoErro
+  }));
+
+  return (
+    <Box>
+      {tasksWithTimeSpent.length === 0 ? (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          Nenhuma tarefa finalizada com tempo gasto encontrada para análise.
+          {selectedSprint && ` Sprint selecionado: ${selectedSprint}`}
+        </Alert>
+      ) : (
+        <>
+          {/* Estatísticas Resumo */}
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid item xs={12} sm={4}>
+              <Card sx={{ bgcolor: 'success.light', color: 'success.contrastText' }}>
+                <CardContent sx={{ textAlign: 'center' }}>
+                  <Typography variant="h4">{estimativasPrecisas.length}</Typography>
+                  <Typography variant="body2">Estimativas Precisas</Typography>
+                  <Typography variant="caption">(±20% da estimativa)</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <Card sx={{ bgcolor: 'error.light', color: 'error.contrastText' }}>
+                <CardContent sx={{ textAlign: 'center' }}>
+                  <Typography variant="h4">{estimativasRuins.length}</Typography>
+                  <Typography variant="body2">Estimativas Ruins</Typography>
+                  <Typography variant="caption">(+20% acima)</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <Card sx={{ bgcolor: 'warning.light', color: 'warning.contrastText' }}>
+                <CardContent sx={{ textAlign: 'center' }}>
+                  <Typography variant="h4">{estimativasOtimas.length}</Typography>
+                  <Typography variant="body2">Subestimadas</Typography>
+                  <Typography variant="caption">(-10% abaixo)</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+
+          {/* Gráficos */}
+          <Grid container spacing={3} sx={{ mb: 3 }}>
+            {/* Gráfico de Barras: Estimativa vs Real */}
+            <Grid item xs={12} lg={8}>
+              <Card>
+                <CardHeader title="📊 Estimativa vs Tempo Real" subheader="Comparação das últimas 10 tarefas finalizadas" />
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={barChartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <RechartsTooltip />
+                      <Bar dataKey="Estimativa" fill="#8884d8" />
+                      <Bar dataKey="Tempo Real" fill="#82ca9d" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Gráfico Scatter: Taxa de Erro vs Estimativa */}
+            <Grid item xs={12} lg={4}>
+              <Card>
+                <CardHeader title="🎯 Taxa de Erro" subheader="Precisão por estimativa" />
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <ScatterChart data={scatterData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="x" name="Estimativa" />
+                      <YAxis dataKey="y" name="Taxa Erro %" />
+                      <RechartsTooltip 
+                        formatter={(value, name) => [
+                          name === 'y' ? `${value.toFixed(1)}%` : `${value}h`,
+                          name === 'y' ? 'Taxa de Erro' : 'Estimativa'
+                        ]}
+                      />
+                      <Scatter dataKey="y" fill="#ff7300" />
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+
+          {/* Lista de Tarefas com Estimativas Ruins */}
+          <EstimativasRuinsList tasks={estimativasRuins} />
+        </>
+      )}
+    </Box>
+  );
+};
+
+// Componente Lista de Estimativas Ruins
+const EstimativasRuinsList = ({ tasks }) => {
+  if (tasks.length === 0) {
+    return (
+      <Alert severity="success" sx={{ mb: 2 }}>
+        🎉 Parabéns! Nenhuma tarefa com estimativa ruim (>20% de erro) encontrada.
+      </Alert>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader 
+        title="⚠️ Tarefas com Estimativas Ruins" 
+        subheader={`${tasks.length} tarefa${tasks.length !== 1 ? 's' : ''} com taxa de erro acima de 20%`}
+      />
+      <CardContent>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {tasks.map(task => (
+            <Tooltip
+              key={task.id}
+              title={
+                <Box>
+                  <Typography variant="subtitle2" gutterBottom>
+                    #{task.id} - {task.atividade}
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    Desenvolvedor: {task.desenvolvedor}
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    Estimativa: {task.estimativa}h → Real: {task.tempoReal}h
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    Taxa de Erro: {task.taxaErro.toFixed(1)}%
+                  </Typography>
+                  {task.motivoErro && (
+                    <Box sx={{ mt: 1, p: 1, bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 1 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
+                        Motivo do Atraso:
+                      </Typography>
+                      <Typography variant="body2">
+                        {task.motivoErro}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              }
+              arrow
+              placement="top"
+            >
+              <Paper
+                sx={{
+                  p: 2,
+                  bgcolor: task.taxaErro > 50 ? 'error.light' : 'warning.light',
+                  color: task.taxaErro > 50 ? 'error.contrastText' : 'warning.contrastText',
+                  cursor: 'pointer',
+                  '&:hover': { 
+                    opacity: 0.8,
+                    transform: 'translateY(-1px)',
+                    transition: 'all 0.2s ease-in-out'
+                  }
+                }}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Box>
+                    <Typography variant="subtitle2">
+                      #{task.id} - {task.atividade}
+                    </Typography>
+                    <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                      {task.desenvolvedor} | {task.estimativa}h → {task.tempoReal}h
+                    </Typography>
+                  </Box>
+                  <Chip
+                    label={`+${task.taxaErro.toFixed(1)}%`}
+                    size="small"
+                    sx={{
+                      bgcolor: task.taxaErro > 50 ? 'error.dark' : 'warning.dark',
+                      color: 'white',
+                      fontWeight: 'bold'
+                    }}
+                  />
+                </Box>
+              </Paper>
+            </Tooltip>
+          ))}
+        </Box>
+      </CardContent>
+    </Card>
   );
 };
 
