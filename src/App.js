@@ -459,6 +459,42 @@ function AppContent() {
     }
   };
 
+  // Função de teste para cadastrar usuário
+  const handleTestSignUp = async () => {
+    if (!isSupabaseConfigured()) {
+      alert('❌ Supabase não configurado');
+      return;
+    }
+
+    try {
+      const email = prompt('📧 Email para cadastro:', 'teste@tasktracker.com');
+      if (!email) return;
+
+      const password = prompt('🔐 Senha (mín. 6 caracteres):', '123456');
+      if (!password) return;
+
+      if (password.length < 6) {
+        alert('❌ Senha deve ter pelo menos 6 caracteres');
+        return;
+      }
+
+      const result = await auth.signUp(email, password);
+      
+      if (result.success) {
+        if (result.needsConfirmation) {
+          alert(`✅ Usuário cadastrado! Verifique seu email para confirmar.\n📧 Email: ${email}`);
+        } else {
+          alert(`✅ Usuário cadastrado e logado automaticamente!\n👤 Email: ${email}\n🔄 Modo Supabase ativado`);
+        }
+      } else {
+        alert(`❌ Erro no cadastro: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Erro no cadastro:', error);
+      alert(`❌ Erro no cadastro: ${error.message}`);
+    }
+  };
+
   // Função de teste para login rápido
   const handleTestLogin = async () => {
     if (!isSupabaseConfigured()) {
@@ -479,7 +515,7 @@ function AppContent() {
       if (result.success) {
         alert(`✅ Login realizado com sucesso!\n👤 Usuário: ${email}\n🔄 Modo Supabase ativado`);
       } else {
-        alert(`❌ Erro no login: ${result.error}`);
+        alert(`❌ Erro no login: ${result.error}\n\n💡 Dica: Talvez precise cadastrar o usuário primeiro`);
       }
     } catch (error) {
       console.error('Erro no login:', error);
@@ -559,20 +595,49 @@ function AppContent() {
               </IconButton>
             </Tooltip>
 
-            {/* Botão de autenticação para teste */}
-            {isSupabaseConfigured() && (
-              <Tooltip title={auth?.isAuthenticated ? '👤 Fazer Logout' : '🔐 Fazer Login'}>
+            {/* Botões de autenticação para teste */}
+            {isSupabaseConfigured() && !auth?.isAuthenticated && (
+              <>
+                <Tooltip title="📝 Cadastrar Usuário">
+                  <IconButton 
+                    color="inherit" 
+                    onClick={handleTestSignUp}
+                    sx={{ 
+                      bgcolor: 'rgba(33, 150, 243, 0.1)',
+                      '&:hover': { bgcolor: 'rgba(33, 150, 243, 0.2)' }
+                    }}
+                  >
+                    📝
+                  </IconButton>
+                </Tooltip>
+                
+                <Tooltip title="🔐 Fazer Login">
+                  <IconButton 
+                    color="inherit" 
+                    onClick={handleTestLogin}
+                    sx={{ 
+                      bgcolor: 'rgba(255, 152, 0, 0.1)',
+                      '&:hover': { bgcolor: 'rgba(255, 152, 0, 0.2)' }
+                    }}
+                  >
+                    🔐
+                  </IconButton>
+                </Tooltip>
+              </>
+            )}
+
+            {/* Botão de logout quando autenticado */}
+            {isSupabaseConfigured() && auth?.isAuthenticated && (
+              <Tooltip title={`👤 ${auth.user?.email} (Logout)`}>
                 <IconButton 
                   color="inherit" 
-                  onClick={auth?.isAuthenticated ? handleTestLogout : handleTestLogin}
+                  onClick={handleTestLogout}
                   sx={{ 
-                    bgcolor: auth?.isAuthenticated ? 'rgba(76, 175, 80, 0.2)' : 'rgba(255, 152, 0, 0.1)',
-                    '&:hover': { 
-                      bgcolor: auth?.isAuthenticated ? 'rgba(76, 175, 80, 0.3)' : 'rgba(255, 152, 0, 0.2)' 
-                    }
+                    bgcolor: 'rgba(76, 175, 80, 0.2)',
+                    '&:hover': { bgcolor: 'rgba(76, 175, 80, 0.3)' }
                   }}
                 >
-                  {auth?.isAuthenticated ? '👤' : '🔐'}
+                  👤
                 </IconButton>
               </Tooltip>
             )}
