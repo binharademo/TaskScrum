@@ -33,10 +33,17 @@ import {
 } from '@mui/icons-material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import SimpleKanban from './components/SimpleKanban';
-import TableView from './components/TableView';
-import WIPControl from './components/WIPControl';
-import PredictiveAnalysis from './components/PredictiveAnalysis';
+
+// Context Providers (Foundation)
+import { TaskProvider, useTaskContext } from './contexts/TaskContext';
+import { FilterProvider } from './contexts/FilterContext';
+import { UIProvider } from './contexts/UIContext';
+
+// Modular Components (New Architecture)
+import SimpleKanbanModular from './components/SimpleKanbanModular';
+import TableViewModular from './components/TableViewModular';
+import StatisticsPanel from './components/table/StatisticsPanel';
+import PredictiveAnalysisModular from './components/table/PredictiveAnalysisModular';
 import GoogleSheetsSimple from './components/GoogleSheetsSimple';
 import ProjectSharing from './components/ProjectSharing';
 import DemoModeInfo from './components/DemoModeInfo';
@@ -65,9 +72,13 @@ function TabPanel({ children, value, index, ...other }) {
   );
 }
 
-function App() {
+// App Content Component (wrapped by Context Providers)
+function AppContent() {
+  // Context hooks
+  const { tasks, loadTasks, addTask, bulkUpdate } = useTaskContext();
+  
+  // Local state (não relacionado a tasks)
   const [currentTab, setCurrentTab] = useState(0);
-  const [tasks, setTasks] = useState([]);
   const [darkMode, setDarkMode] = useState(false);
   const [currentRoom, setCurrentRoomState] = useState('');
   const [roomSelectorOpen, setRoomSelectorOpen] = useState(false);
@@ -149,7 +160,7 @@ function App() {
           ...task,
           reestimativas: task.reestimativas || Array.from({ length: 10 }, () => task.estimativa || 0)
         }));
-        setTasks(migratedTasks);
+        loadTasks(migratedTasks);
         saveTasksToStorage(migratedTasks);
       } else if (!wasCleared) {
         // Só carrega dados de exemplo se não foi zerado pelo usuário
@@ -160,7 +171,7 @@ function App() {
             ...task,
             reestimativas: task.reestimativas || Array.from({ length: 10 }, () => task.estimativa || 0)
           }));
-          setTasks(tasksWithReestimativas);
+          loadTasks(tasksWithReestimativas);
           saveTasksToStorage(tasksWithReestimativas);
         }
       }
@@ -207,7 +218,7 @@ function App() {
     // Monitorar sincronização
     const handleSyncComplete = (event) => {
       setSyncStatus('success');
-      setTasks(event.detail.tasks);
+      loadTasks(event.detail.tasks);
       setTimeout(() => setSyncStatus(null), 3000);
     };
     
@@ -231,20 +242,13 @@ function App() {
     setCurrentTab(newValue);
   };
 
+  // Function to handle bulk task updates with localStorage sync
   const handleTasksUpdate = (updatedTasks) => {
-    // Garantir que todas as tarefas tenham timestamps
-    const tasksWithTimestamps = updatedTasks.map(task => ({
-      ...task,
-      updatedAt: task.updatedAt || new Date().toISOString(),
-      createdAt: task.createdAt || new Date().toISOString(),
-      dataAtualizacao: new Date().toISOString()
-    }));
-    
-    setTasks(tasksWithTimestamps);
-    saveTasksToStorage(tasksWithTimestamps);
+    bulkUpdate(updatedTasks);
+    saveTasksToStorage(updatedTasks);
     
     // Se carregando novos dados, remover flag de "zerado"
-    if (tasksWithTimestamps.length > 0) {
+    if (updatedTasks.length > 0) {
       localStorage.removeItem('tasksCleared');
     }
   };
@@ -269,7 +273,7 @@ function App() {
 
   const handleClearTasks = () => {
     if (window.confirm('Tem certeza que deseja zerar todas as atividades? Esta ação não pode ser desfeita.')) {
-      setTasks([]);
+      loadTasks([]);
       saveTasksToStorage([]);
       // Marcar que a base foi zerada para não recarregar dados de exemplo
       localStorage.setItem('tasksCleared', 'true');
@@ -296,7 +300,7 @@ function App() {
       ...task,
       reestimativas: task.reestimativas || Array.from({ length: 10 }, () => task.estimativa || 0)
     }));
-    setTasks(migratedTasks);
+    loadTasks(migratedTasks);
     
     // Verificar se a nova sala tem modo demo específico
     const roomDemoMode = localStorage.getItem(`demoMode_${roomCode}`) === 'true';
@@ -634,19 +638,19 @@ function App() {
               </Box>
               
               <TabPanel value={currentTab} index={0}>
-                <SimpleKanban tasks={tasks} onTasksUpdate={handleTasksUpdate} />
+                <SimpleKanbanModular />
               </TabPanel>
               
               <TabPanel value={currentTab} index={1}>
-                <TableView tasks={tasks} onTasksUpdate={handleTasksUpdate} />
+                <TableViewModular />
               </TabPanel>
               
               <TabPanel value={currentTab} index={2}>
-                <WIPControl tasks={tasks} onTasksUpdate={handleTasksUpdate} />
+                <StatisticsPanel />
               </TabPanel>
               
               <TabPanel value={currentTab} index={3}>
-                <PredictiveAnalysis tasks={tasks} />
+                <PredictiveAnalysisModular />
               </TabPanel>
               
               {user && (
@@ -669,6 +673,19 @@ function App() {
         )}
       </Box>
     </ThemeProvider>
+  );
+}
+
+// Main App Component with Context Providers
+function App() {
+  return (
+    <TaskProvider>
+      <FilterProvider>
+        <UIProvider>
+          <AppContent />
+        </UIProvider>
+      </FilterProvider>
+    </TaskProvider>
   );
 }
 
