@@ -35,6 +35,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
 // Context Providers (Foundation)
+import { AuthProvider } from './contexts/AuthContext';
 import { TaskProvider, useTaskContext } from './contexts/TaskContext';
 import { FilterProvider } from './contexts/FilterContext';
 import { UIProvider } from './contexts/UIContext';
@@ -47,6 +48,8 @@ import PredictiveAnalysisModular from './components/table/PredictiveAnalysisModu
 import GoogleSheetsSimple from './components/GoogleSheetsSimple';
 import ProjectSharing from './components/ProjectSharing';
 import DemoModeInfo from './components/DemoModeInfo';
+import AuthButton from './components/auth/AuthButton';
+import AuthCallback from './components/auth/AuthCallback';
 import { loadTasksFromStorage, saveTasksToStorage, getCurrentRoom, setCurrentRoom } from './utils/storage';
 import RoomSelector from './components/RoomSelector';
 import { importExcelFile } from './utils/excelImport';
@@ -448,11 +451,8 @@ function AppContent() {
               </Tooltip>
             )}
             
-            <Tooltip title={showGoogleAuth ? "Modo Local" : "Modo Google Sheets"}>
-              <IconButton color="inherit" onClick={handleToggleGoogleSheets}>
-                <GoogleIcon />
-              </IconButton>
-            </Tooltip>
+            {/* Botão de Autenticação Supabase */}
+            <AuthButton />
             
             {user && (
               <>

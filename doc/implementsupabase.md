@@ -318,59 +318,336 @@ CREATE TRIGGER trigger_settings_updated_at
 
 ---
 
-## 🔧 FASE 5: IMPLEMENTAÇÃO FRONTEND
+## 🔧 FASE 5: IMPLEMENTAÇÃO FRONTEND - DETALHADA
 
-### **5.1 Instalar Dependências** (5 min)
+### **STATUS ATUAL** ✅
+- [x] **Dependências instaladas**: @supabase/supabase-js@2.52.1
+- [x] **Configuração**: .env.example atualizado
+- [x] **AuthContext**: Implementado com Supabase Auth
+- [x] **LoginModal**: Modal completo com email/password e OAuth
+- [x] **AuthButton**: Botão de auth no header
+- [x] **AuthGuard**: Proteção de rotas/componentes
+
+### **PRÓXIMAS TAREFAS DETALHADAS**
+
+#### **TAREFA 1: CONFIGURAR PROJETO SUPABASE** (15 min)
 ```bash
-npm install @supabase/supabase-js
+# O que fazer:
+1. Acessar https://supabase.com
+2. Criar projeto: tasktracker-multi-room
+3. Aguardar provisioning (2-3 min)
+4. Settings → API: copiar Project URL e anon key
+5. Settings → Authentication → Providers:
+   - Habilitar Email/Password ✓
+   - Habilitar Google OAuth (opcional)
+   - Site URL: http://localhost:3000
+6. Criar arquivo .env.local com as chaves
 ```
 
-### **5.2 Configuração Ambiente** (5 min)
+#### **TAREFA 2: EXECUTAR SCRIPT SQL** (10 min)
 ```bash
-# .env.local
-REACT_APP_SUPABASE_URL=your_project_url
-REACT_APP_SUPABASE_ANON_KEY=your_anon_key
+# O que fazer:
+1. No Supabase Dashboard → SQL Editor
+2. Copiar conteúdo de /doc/supabase-setup.sql
+3. Executar script completo
+4. Verificar se retornou dados das queries de verificação
+5. Confirmar tabelas criadas: rooms, room_access, tasks, user_settings
 ```
 
-### **5.3 Estrutura de Arquivos** (Planejamento)
-```
-src/
-├── services/
-│   ├── DataService.js (✅ existe)
-│   ├── LocalStorageService.js (✅ existe)
-│   └── SupabaseService.js (🆕 criar)
-├── contexts/
-│   ├── TaskContext.js (✅ existe)
-│   ├── FilterContext.js (✅ existe)
-│   ├── UIContext.js (✅ existe)
-│   ├── AuthContext.js (🆕 criar)
-│   └── RoomContext.js (🆕 criar)
-├── components/
-│   ├── auth/
-│   │   ├── LoginForm.js (🆕 criar)
-│   │   ├── SignUpForm.js (🆕 criar)
-│   │   └── AuthGuard.js (🆕 criar)
-│   ├── rooms/
-│   │   ├── RoomSelector.js (🔄 adaptar existente)
-│   │   ├── RoomCreator.js (🆕 criar)
-│   │   ├── RoomSettings.js (🆕 criar)
-│   │   └── RoomAccess.js (🆕 criar)
-│   └── (componentes existentes permanecem)
-└── hooks/
-    ├── useSupabase.js (🆕 criar)
-    ├── useAuth.js (🆕 criar)
-    └── useRooms.js (🆕 criar)
+#### **TAREFA 3: INTEGRAR AUTHCONTEXT NO APP.JS** (20 min)
+```javascript
+// O que modificar em src/App.js:
+
+// 1. Adicionar import AuthProvider (✅ já feito)
+// 2. Detectar callback OAuth e renderizar AuthCallback
+// 3. Envolver toda aplicação com AuthProvider
+// 4. Remover botão Google antigo e usar AuthButton (✅ já feito)
+
+// Código específico:
+function App() {
+  // Detectar callback OAuth
+  if (window.location.pathname === '/auth/callback') {
+    return <AuthCallback />;
+  }
+
+  return (
+    <AuthProvider>        {/* ← Nova camada */}
+      <TaskProvider>
+        <FilterProvider>
+          <UIProvider>
+            <AppContent />
+          </UIProvider>
+        </FilterProvider>
+      </TaskProvider>
+    </AuthProvider>
+  );
+}
 ```
 
-### **5.4 Ordem de Implementação** (Eficiência máxima)
-1. **SupabaseService.js** - Base de dados
-2. **AuthContext.js** - Autenticação  
-3. **RoomContext.js** - Gestão de salas
-4. **Componentes de Auth** - Login/Signup
-5. **Componentes de Rooms** - Criação/Seleção
-6. **Integração TaskContext** - Usar SupabaseService
-7. **Migração de dados** - localStorage → Supabase
-8. **Testes e refinamentos**
+#### **TAREFA 4: IMPLEMENTAR SUPABASESERVICE.JS** (45 min)
+```javascript
+// Criar src/services/SupabaseService.js
+
+import { DataService } from './DataService.js';
+import { supabase } from '../config/supabase.js';
+
+export class SupabaseService extends DataService {
+  constructor(config = {}) {
+    super(config);
+    this.supabase = supabase;
+    this.currentRoomId = config.roomId || null;
+  }
+
+  // IMPLEMENTAR TODOS OS MÉTODOS:
+  
+  // 1. Connection methods (15 min)
+  async initialize() { }
+  async disconnect() { }
+  async healthCheck() { }
+
+  // 2. Task CRUD (20 min)
+  async getTasks(filters = {}) { }
+  async getTask(id) { }
+  async createTask(taskData) { }
+  async updateTask(id, updates) { }
+  async deleteTask(id) { }
+  async bulkUpdateTasks(updates) { }
+  async bulkDeleteTasks(ids) { }
+
+  // 3. Query operations (10 min)
+  async getTasksByStatus(status, filters = {}) { }
+  async getTasksBySprint(sprint, filters = {}) { }
+  async getTasksByDeveloper(developer, filters = {}) { }
+  async getTasksByEpic(epic, filters = {}) { }
+}
+```
+
+#### **TAREFA 5: CRIAR ROOMCONTEXT.JS** (30 min)
+```javascript
+// Criar src/contexts/RoomContext.js
+
+export const RoomProvider = ({ children }) => {
+  const [currentRoom, setCurrentRoom] = useState(null);
+  const [userRooms, setUserRooms] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // IMPLEMENTAR MÉTODOS:
+  
+  // 1. Room management (20 min)
+  const createRoom = async (roomData) => { };
+  const joinRoom = async (roomCode) => { };
+  const leaveRoom = async (roomId) => { };
+  const updateRoom = async (roomId, updates) => { };
+  
+  // 2. Access management (10 min)
+  const inviteUser = async (roomId, email, role) => { };
+  const removeUser = async (roomId, userId) => { };
+  const changeUserRole = async (roomId, userId, newRole) => { };
+};
+```
+
+#### **TAREFA 6: COMPONENTES DE ROOMS** (60 min)
+
+##### **6.1 RoomCreator.js** (20 min)
+```javascript
+// Modal para criar nova sala
+// Campos: name, description, is_public
+// Gera room_code automaticamente
+// Integra com RoomContext.createRoom()
+```
+
+##### **6.2 RoomJoiner.js** (15 min)
+```javascript
+// Modal para entrar em sala via código
+// Campo: room_code
+// Integra com RoomContext.joinRoom()
+```
+
+##### **6.3 RoomSettings.js** (25 min)
+```javascript
+// Modal de configurações da sala
+// Seções:
+// - Info básica (nome, descrição)
+// - Membros e permissões  
+// - Configurações WIP
+// - Danger zone (excluir sala)
+```
+
+#### **TAREFA 7: ADAPTAR ROOMSELECTOR EXISTENTE** (25 min)
+```javascript
+// Modificar src/components/RoomSelector.js
+
+// ANTES: Lista salas localStorage
+// DEPOIS: Lista salas do usuário + opção join
+
+const RoomSelector = ({ open, onRoomSelected }) => {
+  const { userRooms, createRoom, joinRoom } = useRoom();
+  const { isAuthenticated } = useAuth();
+
+  // 1. Se não autenticado: mostrar salas locais (modo atual)
+  // 2. Se autenticado: mostrar userRooms + botões criar/join
+  // 3. Manter compatibilidade com código atual
+};
+```
+
+#### **TAREFA 8: INTEGRAR SUPABASESERVICE NO TASKCONTEXT** (30 min)
+```javascript
+// Modificar src/contexts/TaskContext.js
+
+export const TaskProvider = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  const { currentRoom } = useRoom();
+  
+  // Service selection based on auth state
+  const getDataService = useCallback(() => {
+    if (isAuthenticated && currentRoom) {
+      return new SupabaseService({ roomId: currentRoom.id });
+    }
+    return new LocalStorageService();
+  }, [isAuthenticated, currentRoom]);
+
+  // Atualizar todos os métodos para usar o service correto
+};
+```
+
+#### **TAREFA 9: FERRAMENTA DE MIGRAÇÃO** (40 min)
+```javascript
+// Criar src/utils/migration.js
+
+export class MigrationService {
+  
+  // 1. Backup localStorage (10 min)
+  static createBackup() { }
+  
+  // 2. Análise de dados (10 min)
+  static analyzeMigration() { }
+  
+  // 3. Migração para Supabase (15 min)
+  static migrateToSupabase(roomName) { }
+  
+  // 4. Rollback em caso de erro (5 min)
+  static rollback() { }
+}
+
+// Criar componente MigrationWizard.js (modal)
+```
+
+#### **TAREFA 10: TESTES DE INTEGRAÇÃO** (30 min)
+```javascript
+// 1. Testar auth flow completo (10 min)
+// - Login/logout
+// - OAuth providers
+// - Session persistence
+
+// 2. Testar room management (10 min)
+// - Criar sala
+// - Join via código
+// - Gerenciar membros
+
+// 3. Testar CRUD de tasks (10 min)
+// - Criar task em sala
+// - Compartilhar entre usuários
+// - Permissões corretas
+```
+
+### **ORDEM DE EXECUÇÃO OTIMIZADA**
+
+```mermaid
+graph TD
+    A[Setup Supabase] --> B[Executar SQL]
+    B --> C[Integrar AuthContext]
+    C --> D[SupabaseService]
+    D --> E[RoomContext]
+    E --> F[Componentes Rooms]
+    F --> G[Adaptar RoomSelector]
+    G --> H[Integrar TaskContext]
+    H --> I[Migração]
+    I --> J[Testes]
+```
+
+### **CHECKLIST DE VALIDAÇÃO**
+
+#### **Milestone 1: Auth Working** ✅
+- [x] Login/logout funcional
+- [x] OAuth providers working
+- [x] Session persistence
+- [x] AuthButton no header
+
+#### **Milestone 2: Database Ready**
+- [ ] Projeto Supabase criado
+- [ ] SQL script executado
+- [ ] RLS policies testadas
+- [ ] Tabelas populadas
+
+#### **Milestone 3: Room System**
+- [ ] RoomContext implementado
+- [ ] Criar sala funcional
+- [ ] Join sala via código
+- [ ] Gerenciar membros
+
+#### **Milestone 4: Task Integration**
+- [ ] SupabaseService completo
+- [ ] TaskContext usando service correto
+- [ ] CRUD tasks em salas compartilhadas
+- [ ] Migração localStorage → Supabase
+
+#### **Milestone 5: Production Ready**
+- [ ] Todos os testes passando
+- [ ] Error handling robusto
+- [ ] Performance otimizada
+- [ ] Documentação atualizada
+
+### **ESTIMATIVAS DE TEMPO**
+
+| Tarefa | Tempo | Dependências |
+|--------|-------|--------------|
+| 1. Setup Supabase | 15min | - |
+| 2. SQL Script | 10min | Tarefa 1 |
+| 3. AuthContext App.js | 20min | - |
+| 4. SupabaseService | 45min | Tarefa 2 |
+| 5. RoomContext | 30min | Tarefa 4 |
+| 6. Componentes Rooms | 60min | Tarefa 5 |
+| 7. RoomSelector | 25min | Tarefa 6 |
+| 8. TaskContext Integration | 30min | Tarefa 7 |
+| 9. Migração | 40min | Tarefa 8 |
+| 10. Testes | 30min | Todas |
+| **TOTAL** | **~5h** | - |
+
+### **ARQUIVOS A SEREM CRIADOS/MODIFICADOS**
+
+#### **Novos Arquivos** (9 arquivos)
+- ✅ `src/config/supabase.js` 
+- ✅ `src/contexts/AuthContext.js`
+- ✅ `src/components/auth/AuthButton.js`
+- ✅ `src/components/auth/LoginModal.js` 
+- ✅ `src/components/auth/AuthGuard.js`
+- ✅ `src/components/auth/AuthCallback.js`
+- [ ] `src/services/SupabaseService.js`
+- [ ] `src/contexts/RoomContext.js`
+- [ ] `src/components/rooms/RoomCreator.js`
+- [ ] `src/components/rooms/RoomJoiner.js`
+- [ ] `src/components/rooms/RoomSettings.js`
+- [ ] `src/utils/migration.js`
+- [ ] `src/components/MigrationWizard.js`
+
+#### **Arquivos Modificados** (4 arquivos)
+- [ ] `src/App.js` - Integrar AuthProvider e callback
+- [ ] `src/contexts/TaskContext.js` - Service switching
+- [ ] `src/components/RoomSelector.js` - Adaptar para Supabase
+- [x] `.env.example` - Adicionar Supabase config
+
+### **PONTOS DE ATENÇÃO**
+
+1. **Compatibilidade**: Manter localStorage funcionando
+2. **Migração**: Backup obrigatório antes de migrar
+3. **Permissões**: Testar RLS policies cuidadosamente
+4. **Performance**: Otimizar queries com índices
+5. **UX**: Feedback visual para todas operações async
+6. **Error Handling**: Tratamento robusto de erros de rede
+
+---
+
+**🎯 STATUS: ROADMAP COMPLETO E DETALHADO - PRONTO PARA EXECUÇÃO INCREMENTAL**
 
 ---
 

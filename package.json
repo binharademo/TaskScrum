@@ -23,6 +23,7 @@
     "@emotion/styled": "^11.11.0",
     "@mui/icons-material": "^5.14.0",
     "@mui/material": "^5.14.0",
+    "@supabase/supabase-js": "^2.52.1",
     "chart.js": "^4.3.0",
     "date-fns": "^2.30.0",
     "google-auth-library": "^10.1.0",
