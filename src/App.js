@@ -49,6 +49,9 @@ import { loadSampleData } from './utils/sampleData';
 // Removido: simpleSheets - usando abordagem mais simples
 import { generateDemoData, getDemoDescription } from './services/demoData';
 
+// TaskContext integration (híbrido - não quebra interface atual)
+import { TaskProvider } from './contexts/TaskContext';
+
 function TabPanel({ children, value, index, ...other }) {
   return (
     <div
@@ -683,4 +686,13 @@ function App() {
   );
 }
 
-export default App;
+// Wrapper com TaskProvider para persistência híbrida
+const AppWithTaskProvider = () => {
+  return (
+    <TaskProvider>
+      <App />
+    </TaskProvider>
+  );
+};
+
+export default AppWithTaskProvider;
