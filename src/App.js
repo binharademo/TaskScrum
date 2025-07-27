@@ -30,7 +30,10 @@ import {
   Group as GroupIcon,
   CloudSync as CloudSyncIcon,
   Share as ShareIcon,
-  Google as GoogleIcon
+  Google as GoogleIcon,
+  Save as SaveIcon,
+  CloudUpload as MigrateIcon,
+  BugReport as TestIcon
 } from '@mui/icons-material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -44,13 +47,17 @@ import ProjectSharing from './components/ProjectSharing';
 import DemoModeInfo from './components/DemoModeInfo';
 import { loadTasksFromStorage, saveTasksToStorage, getCurrentRoom, setCurrentRoom } from './utils/storage';
 import RoomSelector from './components/RoomSelector';
+import MigrationWizard from './components/MigrationWizard';
+import IntegrationTests from './components/IntegrationTests';
 import { importExcelFile } from './utils/excelImport';
 import { loadSampleData } from './utils/sampleData';
 // Removido: simpleSheets - usando abordagem mais simples
 import { generateDemoData, getDemoDescription } from './services/demoData';
 
 // TaskContext integration (híbrido - não quebra interface atual)
-import { TaskProvider } from './contexts/TaskContext';
+import { TaskProvider, useTaskContext } from './contexts/TaskContext';
+import { isSupabaseConfigured } from './config/supabase';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function TabPanel({ children, value, index, ...other }) {
   return (
@@ -70,7 +77,11 @@ function TabPanel({ children, value, index, ...other }) {
   );
 }
 
-function App() {
+// Componente interno que usa AuthContext
+function AppContent() {
+  // AuthContext para teste
+  const auth = isSupabaseConfigured() ? useAuth() : { isAuthenticated: false, user: null };
+  
   const [currentTab, setCurrentTab] = useState(0);
   const [tasks, setTasks] = useState([]);
   const [darkMode, setDarkMode] = useState(false);
@@ -85,6 +96,8 @@ function App() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [demoDescription, setDemoDescription] = useState(null);
+  const [migrationWizardOpen, setMigrationWizardOpen] = useState(false);
+  const [integrationTestsOpen, setIntegrationTestsOpen] = useState(false);
 
   // Função para calcular violações WIP globalmente
   const calculateWIPViolations = () => {
@@ -406,6 +419,97 @@ function App() {
     setDemoDescription(null);
   };
 
+  // Função de teste para forçar salvamento no Supabase
+  const handleTestSupabaseSave = async () => {
+    try {
+      if (!isSupabaseConfigured()) {
+        alert('❌ Supabase não configurado. Configure as credenciais no .env.local');
+        return;
+      }
+
+      // Criar uma tarefa de teste
+      const testTask = {
+        id: `test-${Date.now()}`,
+        atividade: `Teste Supabase - ${new Date().toLocaleTimeString()}`,
+        userStory: 'Testar se a persistência no Supabase está funcionando',
+        epico: 'Sistema de Testes',
+        desenvolvedor: 'Sistema',
+        sprint: currentRoom || 'default',
+        status: 'Backlog',
+        prioridade: 'Média',
+        estimativa: 1,
+        reestimativas: Array(10).fill(1),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      // Adicionar à lista atual (isso vai triggerar a persistência automática)
+      const updatedTasks = [...tasks, testTask];
+      handleTasksUpdate(updatedTasks);
+
+      alert(`✅ Tarefa de teste criada: "${testTask.atividade}"\n\n` +
+            `🔍 Verifique no Supabase Dashboard:\n` +
+            `• Tabela 'tasks' deve ter o novo registro\n` +
+            `• Console do navegador deve mostrar logs\n\n` +
+            `📍 Room: ${currentRoom || 'default'}`);
+
+    } catch (error) {
+      console.error('Erro no teste Supabase:', error);
+      alert(`❌ Erro no teste: ${error.message}`);
+    }
+  };
+
+  // Função de teste para login rápido
+  const handleTestLogin = async () => {
+    if (!isSupabaseConfigured()) {
+      alert('❌ Supabase não configurado');
+      return;
+    }
+
+    try {
+      // Login com email/senha de teste
+      const email = prompt('📧 Email para login:', 'teste@tasktracker.com');
+      if (!email) return;
+
+      const password = prompt('🔐 Senha:', '123456');
+      if (!password) return;
+
+      const result = await auth.signIn(email, password);
+      
+      if (result.success) {
+        alert(`✅ Login realizado com sucesso!\n👤 Usuário: ${email}\n🔄 Modo Supabase ativado`);
+      } else {
+        alert(`❌ Erro no login: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Erro no login:', error);
+      alert(`❌ Erro no login: ${error.message}`);
+    }
+  };
+
+  // Função de teste para logout
+  const handleTestLogout = async () => {
+    try {
+      await auth.signOut();
+      alert('✅ Logout realizado com sucesso!\n🔄 Voltou para modo localStorage');
+    } catch (error) {
+      console.error('Erro no logout:', error);
+      alert(`❌ Erro no logout: ${error.message}`);
+    }
+  };
+
+  // Função para abrir wizard de migração
+  const handleOpenMigrationWizard = () => {
+    setMigrationWizardOpen(true);
+  };
+
+  // Função para finalizar migração
+  const handleMigrationComplete = (results) => {
+    console.log('Migração concluída:', results);
+    // Recarregar tarefas para mostrar dados migrados
+    window.location.reload();
+  };
+
   const theme = createTheme({
     palette: {
       mode: darkMode ? 'dark' : 'light',
@@ -452,6 +556,70 @@ function App() {
             <Tooltip title={showGoogleAuth ? "Modo Local" : "Modo Google Sheets"}>
               <IconButton color="inherit" onClick={handleToggleGoogleSheets}>
                 <GoogleIcon />
+              </IconButton>
+            </Tooltip>
+
+            {/* Botão de autenticação para teste */}
+            {isSupabaseConfigured() && (
+              <Tooltip title={auth?.isAuthenticated ? '👤 Fazer Logout' : '🔐 Fazer Login'}>
+                <IconButton 
+                  color="inherit" 
+                  onClick={auth?.isAuthenticated ? handleTestLogout : handleTestLogin}
+                  sx={{ 
+                    bgcolor: auth?.isAuthenticated ? 'rgba(76, 175, 80, 0.2)' : 'rgba(255, 152, 0, 0.1)',
+                    '&:hover': { 
+                      bgcolor: auth?.isAuthenticated ? 'rgba(76, 175, 80, 0.3)' : 'rgba(255, 152, 0, 0.2)' 
+                    }
+                  }}
+                >
+                  {auth?.isAuthenticated ? '👤' : '🔐'}
+                </IconButton>
+              </Tooltip>
+            )}
+
+            {/* Botão de migração para Supabase - só quando autenticado */}
+            {isSupabaseConfigured() && auth?.isAuthenticated && (
+              <Tooltip title="📦 Migrar dados localStorage → Supabase">
+                <IconButton 
+                  color="inherit" 
+                  onClick={handleOpenMigrationWizard}
+                  sx={{ 
+                    bgcolor: 'rgba(63, 81, 181, 0.1)',
+                    '&:hover': { bgcolor: 'rgba(63, 81, 181, 0.2)' }
+                  }}
+                >
+                  <MigrateIcon />
+                </IconButton>
+              </Tooltip>
+            )}
+
+            {/* Botão de testes de integração */}
+            {isSupabaseConfigured() && (
+              <Tooltip title="🧪 Executar Testes de Integração">
+                <IconButton 
+                  color="inherit" 
+                  onClick={() => setIntegrationTestsOpen(true)}
+                  sx={{ 
+                    bgcolor: 'rgba(156, 39, 176, 0.1)',
+                    '&:hover': { bgcolor: 'rgba(156, 39, 176, 0.2)' }
+                  }}
+                >
+                  <TestIcon />
+                </IconButton>
+              </Tooltip>
+            )}
+
+            {/* Botão de teste Supabase */}
+            <Tooltip title="🧪 Testar Salvamento Supabase">
+              <IconButton 
+                color="inherit" 
+                onClick={handleTestSupabaseSave}
+                sx={{ 
+                  bgcolor: 'rgba(76, 175, 80, 0.1)',
+                  '&:hover': { bgcolor: 'rgba(76, 175, 80, 0.2)' }
+                }}
+              >
+                <SaveIcon />
               </IconButton>
             </Tooltip>
             
@@ -681,18 +849,33 @@ function App() {
             onRoomSelected={handleRoomSelected}
           />
         )}
+
+        {/* Migration Wizard */}
+        <MigrationWizard 
+          open={migrationWizardOpen}
+          onClose={() => setMigrationWizardOpen(false)}
+          onComplete={handleMigrationComplete}
+        />
+
+        {/* Integration Tests */}
+        <IntegrationTests 
+          open={integrationTestsOpen}
+          onClose={() => setIntegrationTestsOpen(false)}
+        />
       </Box>
     </ThemeProvider>
   );
 }
 
-// Wrapper com TaskProvider para persistência híbrida
-const AppWithTaskProvider = () => {
+// Wrapper principal com AuthProvider + TaskProvider
+function App() {
   return (
-    <TaskProvider>
-      <App />
-    </TaskProvider>
+    <AuthProvider>
+      <TaskProvider>
+        <AppContent />
+      </TaskProvider>
+    </AuthProvider>
   );
-};
+}
 
-export default AppWithTaskProvider;
+export default App;
