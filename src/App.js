@@ -18,7 +18,8 @@ import {
 } from '@mui/material';
 import { 
   Dashboard as DashboardIcon, 
-  ShowChart as BurndownIcon,
+  TableChart as TableIcon,
+  Analytics as AnalyticsIcon,
   Speed as SpeedIcon,
   Psychology as PsychologyIcon,
   Upload as UploadIcon,
@@ -33,17 +34,11 @@ import {
 } from '@mui/icons-material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-
-// Context Providers (Foundation)
-import { TaskProvider, useTaskContext } from './contexts/TaskContext';
-import { FilterProvider } from './contexts/FilterContext';
-import { UIProvider } from './contexts/UIContext';
-
-// Modular Components (New Architecture)
-import SimpleKanbanModular from './components/SimpleKanbanModular';
-import TableViewModular from './components/TableViewModular';
-import StatisticsPanel from './components/table/StatisticsPanel';
-import PredictiveAnalysisModular from './components/table/PredictiveAnalysisModular';
+import SimpleKanban from './components/SimpleKanban';
+import TableView from './components/TableView';
+import BurndownChart from './components/BurndownChart';
+import WIPControl from './components/WIPControl';
+import PredictiveAnalysis from './components/PredictiveAnalysis';
 import GoogleSheetsSimple from './components/GoogleSheetsSimple';
 import ProjectSharing from './components/ProjectSharing';
 import DemoModeInfo from './components/DemoModeInfo';
@@ -72,13 +67,9 @@ function TabPanel({ children, value, index, ...other }) {
   );
 }
 
-// App Content Component (wrapped by Context Providers)
-function AppContent() {
-  // Context hooks
-  const { tasks, loadTasks, addTask, bulkUpdate } = useTaskContext();
-  
-  // Local state (não relacionado a tasks)
+function App() {
   const [currentTab, setCurrentTab] = useState(0);
+  const [tasks, setTasks] = useState([]);
   const [darkMode, setDarkMode] = useState(false);
   const [currentRoom, setCurrentRoomState] = useState('');
   const [roomSelectorOpen, setRoomSelectorOpen] = useState(false);
@@ -160,7 +151,7 @@ function AppContent() {
           ...task,
           reestimativas: task.reestimativas || Array.from({ length: 10 }, () => task.estimativa || 0)
         }));
-        loadTasks(migratedTasks);
+        setTasks(migratedTasks);
         saveTasksToStorage(migratedTasks);
       } else if (!wasCleared) {
         // Só carrega dados de exemplo se não foi zerado pelo usuário
@@ -171,7 +162,7 @@ function AppContent() {
             ...task,
             reestimativas: task.reestimativas || Array.from({ length: 10 }, () => task.estimativa || 0)
           }));
-          loadTasks(tasksWithReestimativas);
+          setTasks(tasksWithReestimativas);
           saveTasksToStorage(tasksWithReestimativas);
         }
       }
@@ -218,7 +209,7 @@ function AppContent() {
     // Monitorar sincronização
     const handleSyncComplete = (event) => {
       setSyncStatus('success');
-      loadTasks(event.detail.tasks);
+      setTasks(event.detail.tasks);
       setTimeout(() => setSyncStatus(null), 3000);
     };
     
@@ -242,13 +233,20 @@ function AppContent() {
     setCurrentTab(newValue);
   };
 
-  // Function to handle bulk task updates with localStorage sync
   const handleTasksUpdate = (updatedTasks) => {
-    bulkUpdate(updatedTasks);
-    saveTasksToStorage(updatedTasks);
+    // Garantir que todas as tarefas tenham timestamps
+    const tasksWithTimestamps = updatedTasks.map(task => ({
+      ...task,
+      updatedAt: task.updatedAt || new Date().toISOString(),
+      createdAt: task.createdAt || new Date().toISOString(),
+      dataAtualizacao: new Date().toISOString()
+    }));
+    
+    setTasks(tasksWithTimestamps);
+    saveTasksToStorage(tasksWithTimestamps);
     
     // Se carregando novos dados, remover flag de "zerado"
-    if (updatedTasks.length > 0) {
+    if (tasksWithTimestamps.length > 0) {
       localStorage.removeItem('tasksCleared');
     }
   };
@@ -273,7 +271,7 @@ function AppContent() {
 
   const handleClearTasks = () => {
     if (window.confirm('Tem certeza que deseja zerar todas as atividades? Esta ação não pode ser desfeita.')) {
-      loadTasks([]);
+      setTasks([]);
       saveTasksToStorage([]);
       // Marcar que a base foi zerada para não recarregar dados de exemplo
       localStorage.setItem('tasksCleared', 'true');
@@ -300,7 +298,7 @@ function AppContent() {
       ...task,
       reestimativas: task.reestimativas || Array.from({ length: 10 }, () => task.estimativa || 0)
     }));
-    loadTasks(migratedTasks);
+    setTasks(migratedTasks);
     
     // Verificar se a nova sala tem modo demo específico
     const roomDemoMode = localStorage.getItem(`demoMode_${roomCode}`) === 'true';
@@ -463,7 +461,7 @@ function AppContent() {
                 </Tooltip>
                 
                 <Tooltip title="Compartilhar projeto">
-                  <IconButton color="inherit" onClick={() => setCurrentTab(4)}>
+                  <IconButton color="inherit" onClick={() => setCurrentTab(5)}>
                     <ShareIcon />
                   </IconButton>
                 </Tooltip>
@@ -613,7 +611,12 @@ function AppContent() {
                     iconPosition="start"
                   />
                   <Tab 
-                    icon={<BurndownIcon />} 
+                    icon={<TableIcon />} 
+                    label="Tabela" 
+                    iconPosition="start"
+                  />
+                  <Tab 
+                    icon={<AnalyticsIcon />} 
                     label="Burndown" 
                     iconPosition="start"
                   />
@@ -638,23 +641,27 @@ function AppContent() {
               </Box>
               
               <TabPanel value={currentTab} index={0}>
-                <SimpleKanbanModular />
+                <SimpleKanban tasks={tasks} onTasksUpdate={handleTasksUpdate} />
               </TabPanel>
               
               <TabPanel value={currentTab} index={1}>
-                <TableViewModular />
+                <TableView tasks={tasks} onTasksUpdate={handleTasksUpdate} />
               </TabPanel>
               
               <TabPanel value={currentTab} index={2}>
-                <StatisticsPanel />
+                <BurndownChart tasks={tasks} />
               </TabPanel>
               
               <TabPanel value={currentTab} index={3}>
-                <PredictiveAnalysisModular />
+                <WIPControl tasks={tasks} onTasksUpdate={handleTasksUpdate} />
+              </TabPanel>
+              
+              <TabPanel value={currentTab} index={4}>
+                <PredictiveAnalysis tasks={tasks} />
               </TabPanel>
               
               {user && (
-                <TabPanel value={currentTab} index={4}>
+                <TabPanel value={currentTab} index={5}>
                   <ProjectSharing 
                     projectInfo={projectInfo} 
                     onUpdate={setProjectInfo}
@@ -673,19 +680,6 @@ function AppContent() {
         )}
       </Box>
     </ThemeProvider>
-  );
-}
-
-// Main App Component with Context Providers
-function App() {
-  return (
-    <TaskProvider>
-      <FilterProvider>
-        <UIProvider>
-          <AppContent />
-        </UIProvider>
-      </FilterProvider>
-    </TaskProvider>
   );
 }
 
