@@ -18,8 +18,7 @@ import {
 } from '@mui/material';
 import { 
   Dashboard as DashboardIcon, 
-  TableChart as TableIcon,
-  Analytics as AnalyticsIcon,
+  ShowChart as BurndownIcon,
   Speed as SpeedIcon,
   Psychology as PsychologyIcon,
   Upload as UploadIcon,
@@ -36,7 +35,6 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import SimpleKanban from './components/SimpleKanban';
 import TableView from './components/TableView';
-import BurndownChart from './components/BurndownChart';
 import WIPControl from './components/WIPControl';
 import PredictiveAnalysis from './components/PredictiveAnalysis';
 import GoogleSheetsSimple from './components/GoogleSheetsSimple';
@@ -461,7 +459,7 @@ function App() {
                 </Tooltip>
                 
                 <Tooltip title="Compartilhar projeto">
-                  <IconButton color="inherit" onClick={() => setCurrentTab(5)}>
+                  <IconButton color="inherit" onClick={() => setCurrentTab(4)}>
                     <ShareIcon />
                   </IconButton>
                 </Tooltip>
@@ -611,12 +609,7 @@ function App() {
                     iconPosition="start"
                   />
                   <Tab 
-                    icon={<TableIcon />} 
-                    label="Tabela" 
-                    iconPosition="start"
-                  />
-                  <Tab 
-                    icon={<AnalyticsIcon />} 
+                    icon={<BurndownIcon />} 
                     label="Burndown" 
                     iconPosition="start"
                   />
@@ -649,19 +642,15 @@ function App() {
               </TabPanel>
               
               <TabPanel value={currentTab} index={2}>
-                <BurndownChart tasks={tasks} />
-              </TabPanel>
-              
-              <TabPanel value={currentTab} index={3}>
                 <WIPControl tasks={tasks} onTasksUpdate={handleTasksUpdate} />
               </TabPanel>
               
-              <TabPanel value={currentTab} index={4}>
+              <TabPanel value={currentTab} index={3}>
                 <PredictiveAnalysis tasks={tasks} />
               </TabPanel>
               
               {user && (
-                <TabPanel value={currentTab} index={5}>
+                <TabPanel value={currentTab} index={4}>
                   <ProjectSharing 
                     projectInfo={projectInfo} 
                     onUpdate={setProjectInfo}
