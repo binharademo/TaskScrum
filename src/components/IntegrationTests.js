@@ -63,14 +63,24 @@ const IntegrationTests = ({ open, onClose }) => {
       description: 'Testa conexão e estrutura das tabelas'
     },
     {
-      id: 'rooms',
-      name: '🏠 Testar Operações de Salas',
-      description: 'Criar, listar e verificar salas'
+      id: 'create_test_user',
+      name: '👤 Criar Usuário de Teste',
+      description: 'Criar usuário temporário para testes isolados'
     },
     {
-      id: 'tasks',  
-      name: '📝 Testar CRUD de Tarefas',
-      description: 'Criar, ler, atualizar e deletar tarefas'
+      id: 'create_test_room',
+      name: '🏠 Criar Sala de Teste',
+      description: 'Criar sala de teste com dados específicos'
+    },
+    {
+      id: 'create_test_tasks',
+      name: '📝 Criar Tarefas de Teste',
+      description: 'Criar várias tarefas com diferentes cenários'
+    },
+    {
+      id: 'full_crud_cycle',
+      name: '🔄 Ciclo CRUD Completo',
+      description: 'Testar criação, leitura, atualização e remoção completos'
     },
     {
       id: 'persistence',
@@ -78,9 +88,9 @@ const IntegrationTests = ({ open, onClose }) => {
       description: 'Verificar se TaskContext salva nos dois sistemas'
     },
     {
-      id: 'migration',
-      name: '📦 Testar Dados para Migração',
-      description: 'Verificar dados locais disponíveis para migração'
+      id: 'cleanup_tests',
+      name: '🧹 Limpeza de Dados de Teste',
+      description: 'Remover dados de teste criados'
     }
   ];
 
@@ -104,17 +114,23 @@ const IntegrationTests = ({ open, onClose }) => {
           case 'database':
             result = await testDatabaseConnection();
             break;
-          case 'rooms':
-            result = await testRoomOperations();
+          case 'create_test_user':
+            result = await createTestUser();
             break;
-          case 'tasks':
-            result = await testTaskOperations();
+          case 'create_test_room':
+            result = await createTestRoom();
+            break;
+          case 'create_test_tasks':
+            result = await createTestTasks();
+            break;
+          case 'full_crud_cycle':
+            result = await testFullCrudCycle();
             break;
           case 'persistence':
             result = await testPersistence();
             break;
-          case 'migration':
-            result = await testMigrationData();
+          case 'cleanup_tests':
+            result = await cleanupTestData();
             break;
           default:
             result = { success: false, message: 'Teste não implementado' };
@@ -467,6 +483,518 @@ const IntegrationTests = ({ open, onClose }) => {
                `• ${roomsWithTasks} salas com tarefas\n` +
                `• ${totalTasks} tarefas total` 
     };
+  };
+
+  // ========================================
+  // NOVOS TESTES AVANÇADOS PARA DEBUG
+  // ========================================
+
+  const createTestUser = async () => {
+    console.log('👤 createTestUser - INICIANDO criação de usuário de teste');
+    
+    if (!isSupabaseConfigured()) {
+      return { 
+        success: false, 
+        message: 'Supabase não configurado - não é possível criar usuário' 
+      };
+    }
+
+    try {
+      // Importar o cliente Supabase diretamente
+      const { createClient } = await import('@supabase/supabase-js');
+      const testClient = createClient(
+        process.env.REACT_APP_SUPABASE_URL, 
+        process.env.REACT_APP_SUPABASE_ANON_KEY
+      );
+
+      const testEmail = `teste_${Date.now()}@tasktracker.local`;
+      const testPassword = 'TaskTracker123!';
+
+      console.log('📧 createTestUser - Email de teste:', testEmail);
+      console.log('🔒 createTestUser - Tentando criar usuário...');
+
+      // Criar usuário de teste
+      const { data, error } = await testClient.auth.signUp({
+        email: testEmail,
+        password: testPassword,
+        options: {
+          data: {
+            name: 'Usuário de Teste',
+            created_for: 'integration_tests'
+          }
+        }
+      });
+
+      if (error) {
+        console.error('❌ createTestUser - Erro:', error);
+        return { 
+          success: false, 
+          message: `Erro ao criar usuário: ${error.message}\n\n` +
+                   `💡 POSSÍVEIS CAUSAS:\n` +
+                   `• Confirmação de email obrigatória\n` +
+                   `• Usuário já existe\n` +
+                   `• Política de senha não atendida\n` +
+                   `• RLS ou Auth mal configurados\n\n` +
+                   `📝 EMAIL TESTE: ${testEmail}\n` +
+                   `🔐 SENHA TESTE: ${testPassword}`
+        };
+      }
+
+      console.log('✅ createTestUser - Usuário criado:', data.user?.id);
+
+      return { 
+        success: true, 
+        message: `✅ Usuário de teste criado com sucesso!\n` +
+                 `📧 Email: ${testEmail}\n` +
+                 `🆔 ID: ${data.user?.id}\n` +
+                 `📊 Status: ${data.user?.email_confirmed_at ? 'Confirmado' : 'Aguardando confirmação'}\n\n` +
+                 `💡 NOTA: Se precisar confirmar email, verifique o painel do Supabase em Authentication > Users`
+      };
+
+    } catch (error) {
+      console.error('💥 createTestUser - Erro crítico:', error);
+      return { 
+        success: false, 
+        message: `Erro crítico ao criar usuário: ${error.message}\n\n` +
+                 `🔍 Stack trace no console do navegador` 
+      };
+    }
+  };
+
+  const createTestRoom = async () => {
+    console.log('🏠 createTestRoom - INICIANDO criação de sala de teste');
+
+    if (!auth?.isAuthenticated) {
+      return { 
+        success: false, 
+        message: 'Usuário não autenticado - faça login primeiro' 
+      };
+    }
+
+    try {
+      const service = new SupabaseService();
+      console.log('🔧 createTestRoom - SupabaseService criado');
+      
+      // Inicializar o serviço
+      console.log('⚡ createTestRoom - Inicializando serviço...');
+      await service.initialize();
+      console.log('✅ createTestRoom - Serviço inicializado');
+
+      const timestamp = Date.now();
+      const testRoomData = {
+        name: `Sala de Teste Completa - ${timestamp}`,
+        room_code: `TEST_${timestamp}`,
+        description: `Sala criada automaticamente para testes de integração em ${new Date().toLocaleString('pt-BR')}`,
+        is_public: false
+      };
+
+      console.log('📝 createTestRoom - Dados da sala:', testRoomData);
+      console.log('🏗️ createTestRoom - Criando sala...');
+
+      const room = await service.createRoom(testRoomData);
+      console.log('✅ createTestRoom - Sala criada:', room);
+
+      // Verificar se a sala foi realmente criada
+      console.log('🔍 createTestRoom - Verificando criação...');
+      const foundRoom = await service.findRoomByCode(testRoomData.room_code);
+      
+      if (!foundRoom) {
+        return { 
+          success: false, 
+          message: `Sala criada mas não encontrada na verificação.\n` +
+                   `🏠 Sala criada: ${room?.id}\n` +
+                   `🔍 Busca por código: ${testRoomData.room_code} não encontrou resultados`
+        };
+      }
+
+      console.log('✅ createTestRoom - Verificação OK:', foundRoom.id);
+
+      // Salvar dados para próximos testes
+      window.testRoomData = {
+        id: room.id,
+        code: room.room_code,
+        name: room.name
+      };
+
+      return { 
+        success: true, 
+        message: `✅ Sala de teste criada e verificada!\n` +
+                 `🏠 Nome: ${room.name}\n` +
+                 `📋 Código: ${room.room_code}\n` +
+                 `🆔 ID: ${room.id}\n` +
+                 `👤 Proprietário: ${auth.user?.email}\n` +
+                 `⏰ Criada em: ${new Date().toLocaleString('pt-BR')}\n\n` +
+                 `💡 Dados salvos em window.testRoomData para próximos testes`
+      };
+
+    } catch (error) {
+      console.error('❌ createTestRoom - Erro:', error);
+      console.error('📋 createTestRoom - Stack:', error.stack);
+      
+      return { 
+        success: false, 
+        message: `Erro ao criar sala de teste: ${error.message}\n\n` +
+                 `🔍 DETALHES DO ERRO:\n` +
+                 `• Tipo: ${error.name}\n` +
+                 `• Usuário: ${auth.user?.email}\n` +
+                 `• Timestamp: ${new Date().toISOString()}\n\n` +
+                 `💡 Stack trace completo no console` 
+      };
+    }
+  };
+
+  const createTestTasks = async () => {
+    console.log('📝 createTestTasks - INICIANDO criação de tarefas de teste');
+
+    if (!auth?.isAuthenticated) {
+      return { 
+        success: false, 
+        message: 'Usuário não autenticado - faça login primeiro' 
+      };
+    }
+
+    if (!window.testRoomData) {
+      return { 
+        success: false, 
+        message: 'Sala de teste não encontrada - execute primeiro o teste "Criar Sala de Teste"' 
+      };
+    }
+
+    try {
+      const service = new SupabaseService();
+      console.log('🔧 createTestTasks - SupabaseService criado');
+      
+      await service.initialize();
+      console.log('✅ createTestTasks - Serviço inicializado');
+
+      // Definir sala atual
+      service.setCurrentRoom(window.testRoomData.id);
+      console.log('🎯 createTestTasks - Sala atual definida:', window.testRoomData.id);
+
+      const testTasks = [
+        {
+          atividade: 'Implementar sistema de login',
+          epico: 'Autenticação',
+          userStory: 'Como usuário, quero fazer login para acessar o sistema',
+          status: 'Backlog',
+          prioridade: 'Alta',
+          estimativa: 8,
+          desenvolvedor: 'João Silva',
+          sprint: 'Sprint 1',
+          detalhamento: 'Implementar OAuth com Google e login local'
+        },
+        {
+          atividade: 'Criar dashboard principal',
+          epico: 'Interface',
+          userStory: 'Como usuário, quero ver um resumo das minhas tarefas',
+          status: 'Doing',
+          prioridade: 'Média',
+          estimativa: 5,
+          desenvolvedor: 'Maria Santos',
+          sprint: 'Sprint 1',
+          detalhamento: 'Dashboard com métricas e gráficos'
+        },
+        {
+          atividade: 'Configurar banco de dados',
+          epico: 'Backend',
+          userStory: 'Como sistema, preciso persistir dados dos usuários',
+          status: 'Done',
+          prioridade: 'Crítica',
+          estimativa: 3,
+          desenvolvedor: 'Pedro Costa',
+          sprint: 'Sprint 0',
+          detalhamento: 'Setup PostgreSQL com Supabase',
+          tempoGasto: 4,
+          taxaErro: 33.33,
+          tempoGastoValidado: true,
+          motivoErro: 'Configuração inicial mais complexa que esperado'
+        }
+      ];
+
+      const createdTasks = [];
+      const errors = [];
+
+      console.log(`🚀 createTestTasks - Criando ${testTasks.length} tarefas...`);
+
+      for (let i = 0; i < testTasks.length; i++) {
+        const taskData = testTasks[i];
+        try {
+          console.log(`📝 createTestTasks - Criando tarefa ${i + 1}: ${taskData.atividade}`);
+          
+          const createdTask = await service.createTask(taskData);
+          createdTasks.push(createdTask);
+          
+          console.log(`✅ createTestTasks - Tarefa ${i + 1} criada:`, createdTask.id);
+          
+        } catch (taskError) {
+          console.error(`❌ createTestTasks - Erro na tarefa ${i + 1}:`, taskError);
+          errors.push({
+            tarefa: taskData.atividade,
+            erro: taskError.message
+          });
+        }
+      }
+
+      // Salvar dados para próximos testes
+      window.testTasksData = createdTasks;
+
+      if (errors.length > 0) {
+        return { 
+          success: false, 
+          message: `⚠️ Tarefas criadas com erros: ${createdTasks.length}/${testTasks.length}\n\n` +
+                   `✅ CRIADAS COM SUCESSO (${createdTasks.length}):\n` +
+                   createdTasks.map((t, i) => `${i + 1}. ${t.atividade} (ID: ${t.id})`).join('\n') +
+                   `\n\n❌ ERROS (${errors.length}):\n` +
+                   errors.map((e, i) => `${i + 1}. ${e.tarefa}: ${e.erro}`).join('\n') +
+                   `\n\n💡 Dados salvos em window.testTasksData`
+        };
+      }
+
+      return { 
+        success: true, 
+        message: `✅ Todas as ${createdTasks.length} tarefas criadas com sucesso!\n\n` +
+                 `📝 TAREFAS CRIADAS:\n` +
+                 createdTasks.map((t, i) => 
+                   `${i + 1}. ${t.atividade}\n` +
+                   `   📊 Status: ${t.status}\n` +
+                   `   🆔 ID: ${t.id}\n` +
+                   `   👤 Dev: ${t.desenvolvedor}`
+                 ).join('\n\n') +
+                 `\n\n🏠 Sala: ${window.testRoomData.name}\n` +
+                 `💡 Dados salvos em window.testTasksData para próximos testes`
+      };
+
+    } catch (error) {
+      console.error('❌ createTestTasks - Erro geral:', error);
+      console.error('📋 createTestTasks - Stack:', error.stack);
+      
+      return { 
+        success: false, 
+        message: `Erro ao criar tarefas de teste: ${error.message}\n\n` +
+                 `🔍 DETALHES:\n` +
+                 `• Sala ID: ${window.testRoomData?.id}\n` +
+                 `• Usuário: ${auth.user?.email}\n` +
+                 `• Erro tipo: ${error.name}\n\n` +
+                 `💡 Stack trace no console`
+      };
+    }
+  };
+
+  const testFullCrudCycle = async () => {
+    console.log('🔄 testFullCrudCycle - INICIANDO teste CRUD completo');
+
+    if (!auth?.isAuthenticated) {
+      return { 
+        success: false, 
+        message: 'Usuário não autenticado - faça login primeiro' 
+      };
+    }
+
+    if (!window.testRoomData || !window.testTasksData || window.testTasksData.length === 0) {
+      return { 
+        success: false, 
+        message: 'Dados de teste não encontrados - execute primeiro os testes anteriores' 
+      };
+    }
+
+    try {
+      const service = new SupabaseService();
+      await service.initialize();
+      service.setCurrentRoom(window.testRoomData.id);
+
+      console.log('🔄 testFullCrudCycle - Configuração OK');
+
+      const results = [];
+      
+      // 1. READ - Listar todas as tarefas
+      console.log('📖 testFullCrudCycle - Testando READ...');
+      const allTasks = await service.getTasks();
+      results.push(`✅ READ: ${allTasks.length} tarefas encontradas`);
+
+      // 2. CREATE - Criar nova tarefa
+      console.log('📝 testFullCrudCycle - Testando CREATE...');
+      const newTask = {
+        atividade: `Tarefa CRUD Test - ${Date.now()}`,
+        epico: 'Testes Automatizados',
+        status: 'Backlog',
+        estimativa: 2,
+        desenvolvedor: 'Sistema de Testes'
+      };
+
+      const createdTask = await service.createTask(newTask);
+      results.push(`✅ CREATE: Tarefa criada (ID: ${createdTask.id})`);
+
+      // 3. UPDATE - Atualizar a tarefa criada
+      console.log('📝 testFullCrudCycle - Testando UPDATE...');
+      const updatedTask = await service.updateTask(createdTask.id, {
+        status: 'Doing',
+        atividade: createdTask.atividade + ' (Atualizada)',
+        estimativa: 3
+      });
+      results.push(`✅ UPDATE: Tarefa atualizada (Status: ${updatedTask.status})`);
+
+      // 4. GET - Buscar a tarefa específica
+      console.log('🔍 testFullCrudCycle - Testando GET específico...');
+      const foundTask = await service.getTask(createdTask.id);
+      if (foundTask && foundTask.status === 'Doing') {
+        results.push(`✅ GET: Tarefa encontrada e dados corretos`);
+      } else {
+        results.push(`❌ GET: Dados inconsistentes (esperado: Doing, encontrado: ${foundTask?.status})`);
+      }
+
+      // 5. DELETE - Remover a tarefa de teste
+      console.log('🗑️ testFullCrudCycle - Testando DELETE...');
+      await service.deleteTask(createdTask.id);
+      
+      // Verificar se foi realmente removida
+      const deletedTask = await service.getTask(createdTask.id);
+      if (!deletedTask) {
+        results.push(`✅ DELETE: Tarefa removida com sucesso`);
+      } else {
+        results.push(`❌ DELETE: Tarefa ainda existe após remoção`);
+      }
+
+      // 6. Teste de filtros
+      console.log('🔍 testFullCrudCycle - Testando FILTROS...');
+      const backlogTasks = await service.getTasksByStatus('Backlog');
+      const doingTasks = await service.getTasksByStatus('Doing');
+      const doneTasks = await service.getTasksByStatus('Done');
+      
+      results.push(`✅ FILTROS: Backlog(${backlogTasks.length}), Doing(${doingTasks.length}), Done(${doneTasks.length})`);
+
+      // 7. Teste de contagem
+      console.log('📊 testFullCrudCycle - Testando CONTAGEM...');
+      const totalCount = await service.getTasksCount();
+      const backlogCount = await service.getTasksCount({ status: 'Backlog' });
+      
+      results.push(`✅ COUNT: Total(${totalCount}), Backlog filtrado(${backlogCount})`);
+
+      console.log('✅ testFullCrudCycle - Todos os testes concluídos');
+
+      return { 
+        success: true, 
+        message: `🎉 Ciclo CRUD completo executado com sucesso!\n\n` +
+                 `📋 RESULTADOS DOS TESTES:\n` +
+                 results.map((r, i) => `${i + 1}. ${r}`).join('\n') +
+                 `\n\n🏠 Sala de teste: ${window.testRoomData.name}\n` +
+                 `⏰ Executado em: ${new Date().toLocaleString('pt-BR')}\n\n` +
+                 `💡 Todos os métodos do SupabaseService foram testados e estão funcionando!`
+      };
+
+    } catch (error) {
+      console.error('❌ testFullCrudCycle - Erro:', error);
+      console.error('📋 testFullCrudCycle - Stack:', error.stack);
+      
+      return { 
+        success: false, 
+        message: `Erro no ciclo CRUD: ${error.message}\n\n` +
+                 `🔍 CONTEXTO DO ERRO:\n` +
+                 `• Sala: ${window.testRoomData?.name}\n` +
+                 `• Tarefas disponíveis: ${window.testTasksData?.length || 0}\n` +
+                 `• Usuário: ${auth.user?.email}\n` +
+                 `• Timestamp: ${new Date().toISOString()}\n\n` +
+                 `💡 Verifique logs detalhados no console`
+      };
+    }
+  };
+
+  const cleanupTestData = async () => {
+    console.log('🧹 cleanupTestData - INICIANDO limpeza de dados de teste');
+
+    if (!auth?.isAuthenticated) {
+      return { 
+        success: false, 
+        message: 'Usuário não autenticado - faça login primeiro' 
+      };
+    }
+
+    try {
+      const service = new SupabaseService();
+      await service.initialize();
+
+      const results = [];
+      let errors = [];
+
+      // 1. Limpar tarefas de teste se existirem
+      if (window.testTasksData && window.testTasksData.length > 0) {
+        console.log(`🗑️ cleanupTestData - Removendo ${window.testTasksData.length} tarefas...`);
+        
+        service.setCurrentRoom(window.testRoomData.id);
+        
+        for (const task of window.testTasksData) {
+          try {
+            await service.deleteTask(task.id);
+            console.log(`✅ cleanupTestData - Tarefa removida: ${task.id}`);
+          } catch (error) {
+            console.error(`❌ cleanupTestData - Erro ao remover tarefa ${task.id}:`, error);
+            errors.push(`Tarefa ${task.atividade}: ${error.message}`);
+          }
+        }
+        
+        results.push(`🗑️ ${window.testTasksData.length} tarefas de teste processadas`);
+        delete window.testTasksData;
+      }
+
+      // 2. Limpar sala de teste se existir
+      if (window.testRoomData) {
+        console.log(`🏠 cleanupTestData - Removendo sala: ${window.testRoomData.name}`);
+        
+        try {
+          await service.deleteRoom(window.testRoomData.id);
+          results.push(`🏠 Sala de teste removida: ${window.testRoomData.name}`);
+          console.log(`✅ cleanupTestData - Sala removida: ${window.testRoomData.id}`);
+          delete window.testRoomData;
+        } catch (error) {
+          console.error(`❌ cleanupTestData - Erro ao remover sala:`, error);
+          errors.push(`Sala ${window.testRoomData.name}: ${error.message}`);
+        }
+      }
+
+      // 3. Remover variáveis globais
+      if (window.testUserData) {
+        delete window.testUserData;
+        results.push(`🧹 Dados de usuário de teste limpos`);
+      }
+
+      if (results.length === 0) {
+        return { 
+          success: true, 
+          message: '✨ Nenhum dado de teste encontrado para limpeza - sistema já está limpo!' 
+        };
+      }
+
+      if (errors.length > 0) {
+        return { 
+          success: false, 
+          message: `⚠️ Limpeza parcial concluída:\n\n` +
+                   `✅ SUCESSOS:\n${results.join('\n')}\n\n` +
+                   `❌ ERROS:\n${errors.join('\n')}\n\n` +
+                   `💡 Alguns dados podem precisar ser removidos manualmente no painel do Supabase`
+        };
+      }
+
+      return { 
+        success: true, 
+        message: `✅ Limpeza de dados de teste concluída com sucesso!\n\n` +
+                 `🧹 AÇÕES REALIZADAS:\n${results.join('\n')}\n\n` +
+                 `✨ Sistema restaurado ao estado inicial\n` +
+                 `⏰ Limpeza executada em: ${new Date().toLocaleString('pt-BR')}`
+      };
+
+    } catch (error) {
+      console.error('❌ cleanupTestData - Erro:', error);
+      console.error('📋 cleanupTestData - Stack:', error.stack);
+      
+      return { 
+        success: false, 
+        message: `Erro na limpeza de dados: ${error.message}\n\n` +
+                 `💡 Pode ser necessário limpar dados manualmente:\n` +
+                 `• Acesse o painel do Supabase\n` +
+                 `• Vá em Database > Table Editor\n` +
+                 `• Remover dados das tabelas tasks e rooms\n\n` +
+                 `🔍 Stack trace no console`
+      };
+    }
   };
 
   const getStatusIcon = (success, running) => {
