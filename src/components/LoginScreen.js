@@ -150,8 +150,6 @@ const LoginScreen = ({ open, onClose, onLoginSuccess, onSignUpSuccess }) => {
           let friendlyError = result.error;
           if (result.error.includes('Invalid login credentials')) {
             friendlyError = '❌ Email ou senha incorretos. Verifique seus dados e tente novamente.';
-          } else if (result.error.includes('Email not confirmed')) {
-            friendlyError = '📧 Confirme seu email antes de fazer login. Verifique sua caixa de entrada.';
           } else if (result.error.includes('Too many requests')) {
             friendlyError = '⏳ Muitas tentativas. Aguarde alguns minutos e tente novamente.';
           }
@@ -169,22 +167,15 @@ const LoginScreen = ({ open, onClose, onLoginSuccess, onSignUpSuccess }) => {
         });
         
         if (result.success) {
-          if (result.needsConfirmation) {
-            setSuccess('📧 Conta criada! Verifique seu email para confirmar e fazer login.');
-            setTimeout(() => {
-              setIsLogin(true); // Alternar para tela de login
-              setFormData(prev => ({ ...prev, password: '', confirmPassword: '' }));
-            }, 3000);
-          } else {
-            setSuccess('✅ Conta criada com sucesso! Você já está logado!');
-            setTimeout(() => {
-              onSignUpSuccess({
-                email: formData.email,
-                name: formData.name,
-                user: result.data?.user
-              });
-            }, 1500);
-          }
+          // Verificação de email desabilitada - sempre vai direto para o login
+          setSuccess('✅ Conta criada com sucesso! Você já está logado!');
+          setTimeout(() => {
+            onSignUpSuccess({
+              email: formData.email,
+              name: formData.name,
+              user: result.data?.user
+            });
+          }, 1500);
         } else {
           // Mensagens de erro mais amigáveis
           let friendlyError = result.error;

@@ -16,7 +16,10 @@ export const supabase = supabaseUrl && supabaseAnonKey
         persistSession: true,
         detectSessionInUrl: true,
         flowType: 'pkce',
-        redirectTo: `${window.location.origin}/auth/callback`
+        redirectTo: `${window.location.origin}/auth/callback`,
+        autoRefreshToken: true,
+        // Desabilitar verificação de email
+        debug: false
       }
     })
   : null;
@@ -24,6 +27,11 @@ export const supabase = supabaseUrl && supabaseAnonKey
 // Auth configuration
 export const authConfig = {
   redirectTo: `${window.location.origin}/auth/callback`,
+  // Desabilitar verificação de email
+  emailRedirectTo: `${window.location.origin}/auth/callback`,
+  data: {
+    email_confirm: false // Não exigir confirmação de email
+  },
   providers: {
     google: {
       redirectTo: `${window.location.origin}/auth/callback`

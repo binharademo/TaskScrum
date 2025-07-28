@@ -85,25 +85,37 @@ const WelcomeWizard = ({ open, onComplete }) => {
         </Zoom>
         
         <Typography variant="h5" color="text.secondary" gutterBottom sx={{ mb: 4 }}>
-          Sua ferramenta completa para gestão ágil de projetos
+          🎯 Uma ferramenta simples para organizar suas tarefas
         </Typography>
         
-        <Box sx={{ maxWidth: 600, mx: 'auto', mb: 4 }}>
-          <Typography variant="body1" paragraph>
-            O TaskTracker é uma ferramenta poderosa inspirada no Trello, desenvolvida especialmente 
-            para equipes de desenvolvimento que trabalham com metodologias ágeis.
+        <Box sx={{ maxWidth: 500, mx: 'auto', mb: 4 }}>
+          <Typography variant="h6" paragraph sx={{ fontSize: '1.3rem', lineHeight: 1.6 }}>
+            📝 <strong>O que é o TaskTracker?</strong>
+          </Typography>
+          <Typography variant="body1" paragraph sx={{ fontSize: '1.1rem', lineHeight: 1.7 }}>
+            É como uma lista de tarefas super inteligente! Você pode:
           </Typography>
           
-          <Typography variant="body1" paragraph>
-            Com ele, você terá controle total sobre suas tarefas, poderá acompanhar o progresso 
-            do seu sprint e ainda contar com análises preditivas avançadas.
-          </Typography>
+          <Box sx={{ textAlign: 'left', maxWidth: 400, mx: 'auto' }}>
+            <Typography variant="body1" sx={{ fontSize: '1.1rem', mb: 1 }}>
+              ✅ Ver suas tarefas organizadas
+            </Typography>
+            <Typography variant="body1" sx={{ fontSize: '1.1rem', mb: 1 }}>
+              🏃‍♂️ Mover elas de "fazendo" para "pronto"
+            </Typography>
+            <Typography variant="body1" sx={{ fontSize: '1.1rem', mb: 1 }}>
+              📊 Ver gráficos do seu progresso
+            </Typography>
+            <Typography variant="body1" sx={{ fontSize: '1.1rem', mb: 1 }}>
+              👥 Trabalhar junto com sua equipe
+            </Typography>
+          </Box>
         </Box>
 
-        <Alert severity="info" sx={{ maxWidth: 500, mx: 'auto', mb: 4 }}>
-          <Typography variant="body2">
-            <TipIcon sx={{ fontSize: 16, mr: 1, verticalAlign: 'middle' }} />
-            Este wizard vai te ajudar a configurar o sistema da melhor forma para seu time!
+        <Alert severity="success" sx={{ maxWidth: 450, mx: 'auto', mb: 4 }}>
+          <Typography variant="body2" sx={{ fontSize: '1rem' }}>
+            <TipIcon sx={{ fontSize: 20, mr: 1, verticalAlign: 'middle' }} />
+            <strong>Não se preocupe!</strong> Vamos configurar tudo junto, passo a passo! 😊
           </Typography>
         </Alert>
 
@@ -121,37 +133,46 @@ const WelcomeWizard = ({ open, onComplete }) => {
   );
 
   // =============================================
-  // STEP 2: FUNCIONALIDADES DO SISTEMA
+  // STEP 2: FUNCIONALIDADES DO SISTEMA (ELI5)
   // =============================================
   const FeaturesStep = () => (
     <Fade in timeout={800}>
       <Box sx={{ py: 3 }}>
-        <Typography variant="h4" textAlign="center" gutterBottom color="primary" fontWeight="bold">
-          🚀 Funcionalidades Principais
+        <Typography variant="h4" textAlign="center" gutterBottom color="primary" fontWeight="bold" sx={{ fontSize: '2.2rem', mb: 2 }}>
+          🎮 O Que Você Pode Fazer Aqui?
         </Typography>
         
-        <Typography variant="h6" textAlign="center" color="text.secondary" sx={{ mb: 4 }}>
-          Conheça as ferramentas que vão revolucionar sua gestão de projetos
+        <Typography variant="h6" textAlign="center" color="text.secondary" sx={{ mb: 4, fontSize: '1.3rem', lineHeight: 1.6 }}>
+          Imagine como se fosse um jogo onde você organiza suas tarefas! 😊
         </Typography>
 
         <Grid container spacing={3}>
           {/* Kanban Board */}
           <Grid item xs={12} md={4}>
             <Zoom in timeout={600}>
-              <Card sx={{ height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)' } }}>
+              <Card sx={{ height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)' }, border: '2px solid #e3f2fd' }}>
                 <CardContent sx={{ textAlign: 'center', p: 3 }}>
-                  <KanbanIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
-                  <Typography variant="h6" gutterBottom fontWeight="bold">
-                    Kanban Visual
+                  <KanbanIcon sx={{ fontSize: 80, color: 'primary.main', mb: 2 }} />
+                  <Typography variant="h5" gutterBottom fontWeight="bold" sx={{ fontSize: '1.4rem', mb: 2 }}>
+                    🎯 Quadro de Tarefas
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Quadro visual com colunas Backlog, Priorizado, Doing e Done. 
-                    Arraste e solte tarefas, organize por épicos e mantenha tudo organizado.
+                  <Typography variant="body1" color="text.secondary" sx={{ fontSize: '1.1rem', lineHeight: 1.6, mb: 2 }}>
+                    É como organizar suas tarefas em caixinhas:
                   </Typography>
-                  <Box sx={{ mt: 2 }}>
-                    <Chip label="Drag & Drop" size="small" variant="outlined" sx={{ mr: 1 }} />
-                    <Chip label="Épicos" size="small" variant="outlined" />
+                  <Box sx={{ textAlign: 'left', maxWidth: 250, mx: 'auto' }}>
+                    <Typography variant="body2" sx={{ fontSize: '1rem', mb: 1 }}>
+                      📋 <strong>Para Fazer</strong> - suas tarefas esperando
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontSize: '1rem', mb: 1 }}>
+                      🏃‍♂️ <strong>Fazendo</strong> - o que você está trabalhando
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontSize: '1rem', mb: 1 }}>
+                      ✅ <strong>Pronto</strong> - tarefas que você terminou
+                    </Typography>
                   </Box>
+                  <Alert severity="success" sx={{ mt: 2, fontSize: '0.9rem' }}>
+                    <strong>Legal:</strong> Você pode arrastar as tarefas de uma caixinha para outra!
+                  </Alert>
                 </CardContent>
               </Card>
             </Zoom>
@@ -160,20 +181,29 @@ const WelcomeWizard = ({ open, onComplete }) => {
           {/* Burndown Chart */}
           <Grid item xs={12} md={4}>
             <Zoom in timeout={800}>
-              <Card sx={{ height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)' } }}>
+              <Card sx={{ height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)' }, border: '2px solid #e8f5e8' }}>
                 <CardContent sx={{ textAlign: 'center', p: 3 }}>
-                  <BurndownIcon sx={{ fontSize: 60, color: 'success.main', mb: 2 }} />
-                  <Typography variant="h6" gutterBottom fontWeight="bold">
-                    Burndown Chart
+                  <BurndownIcon sx={{ fontSize: 80, color: 'success.main', mb: 2 }} />
+                  <Typography variant="h5" gutterBottom fontWeight="bold" sx={{ fontSize: '1.4rem', mb: 2 }}>
+                    📊 Gráfico de Progresso
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Acompanhe o progresso do sprint em tempo real com gráficos de burndown. 
-                    Veja se está no prazo e identifique desvios rapidamente.
+                  <Typography variant="body1" color="text.secondary" sx={{ fontSize: '1.1rem', lineHeight: 1.6, mb: 2 }}>
+                    Como um medidor que mostra se você está indo bem:
                   </Typography>
-                  <Box sx={{ mt: 2 }}>
-                    <Chip label="Tempo Real" size="small" variant="outlined" sx={{ mr: 1 }} />
-                    <Chip label="Sprint" size="small" variant="outlined" />
+                  <Box sx={{ textAlign: 'left', maxWidth: 250, mx: 'auto' }}>
+                    <Typography variant="body2" sx={{ fontSize: '1rem', mb: 1 }}>
+                      📈 <strong>Linha Verde</strong> - onde você deveria estar
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontSize: '1rem', mb: 1 }}>
+                      📉 <strong>Linha Azul</strong> - onde você realmente está
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontSize: '1rem', mb: 1 }}>
+                      🎯 <strong>Se as linhas estão próximas</strong> - você está indo bem!
+                    </Typography>
                   </Box>
+                  <Alert severity="info" sx={{ mt: 2, fontSize: '0.9rem' }}>
+                    <strong>Dica:</strong> É como um velocímetro do seu trabalho!
+                  </Alert>
                 </CardContent>
               </Card>
             </Zoom>
@@ -182,31 +212,40 @@ const WelcomeWizard = ({ open, onComplete }) => {
           {/* Análise Preditiva */}
           <Grid item xs={12} md={4}>
             <Zoom in timeout={1000}>
-              <Card sx={{ height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)' } }}>
+              <Card sx={{ height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)' }, border: '2px solid #fff3e0' }}>
                 <CardContent sx={{ textAlign: 'center', p: 3 }}>
-                  <PredictiveIcon sx={{ fontSize: 60, color: 'warning.main', mb: 2 }} />
-                  <Typography variant="h6" gutterBottom fontWeight="bold">
-                    Análise Preditiva
+                  <PredictiveIcon sx={{ fontSize: 80, color: 'warning.main', mb: 2 }} />
+                  <Typography variant="h5" gutterBottom fontWeight="bold" sx={{ fontSize: '1.4rem', mb: 2 }}>
+                    🔮 Previsão Inteligente
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Algoritmos avançados analisam o desempenho da equipe e fazem previsões 
-                    sobre entregas, riscos e necessidade de recursos.
+                  <Typography variant="body1" color="text.secondary" sx={{ fontSize: '1.1rem', lineHeight: 1.6, mb: 2 }}>
+                    O computador olha como você trabalha e te avisa:
                   </Typography>
-                  <Box sx={{ mt: 2 }}>
-                    <Chip label="IA" size="small" variant="outlined" sx={{ mr: 1 }} />
-                    <Chip label="Previsões" size="small" variant="outlined" />
+                  <Box sx={{ textAlign: 'left', maxWidth: 250, mx: 'auto' }}>
+                    <Typography variant="body2" sx={{ fontSize: '1rem', mb: 1 }}>
+                      ⏰ <strong>"Você vai terminar no prazo"</strong>
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontSize: '1rem', mb: 1 }}>
+                      ⚠️ <strong>"Atenção, pode atrasar!"</strong>
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontSize: '1rem', mb: 1 }}>
+                      👥 <strong>"Precisa de mais pessoas"</strong>
+                    </Typography>
                   </Box>
+                  <Alert severity="warning" sx={{ mt: 2, fontSize: '0.9rem' }}>
+                    <strong>Incrível:</strong> É como ter um assistente inteligente!
+                  </Alert>
                 </CardContent>
               </Card>
             </Zoom>
           </Grid>
         </Grid>
 
-        <Alert severity="success" sx={{ mt: 4, mb: 3 }}>
-          <Typography variant="body2">
-            <FeatureIcon sx={{ fontSize: 16, mr: 1, verticalAlign: 'middle' }} />
-            <strong>Mais recursos:</strong> Filtros avançados, exportação de dados, 
-            métricas de performance e muito mais!
+        <Alert severity="success" sx={{ mt: 4, mb: 3, fontSize: '1.1rem', py: 2 }}>
+          <Typography variant="body1" sx={{ fontSize: '1.1rem', lineHeight: 1.6 }}>
+            <FeatureIcon sx={{ fontSize: 20, mr: 1, verticalAlign: 'middle' }} />
+            <strong>E tem muito mais!</strong> Você pode filtrar suas tarefas, baixar relatórios, 
+            trabalhar em equipe e várias outras coisas legais! 🎉
           </Typography>
         </Alert>
 
@@ -215,15 +254,17 @@ const WelcomeWizard = ({ open, onComplete }) => {
             variant="outlined"
             onClick={() => setCurrentStep(0)}
             startIcon={<BackIcon />}
+            sx={{ fontSize: '1rem', px: 3, py: 1.5 }}
           >
-            Voltar
+            ← Voltar
           </Button>
           <Button
             variant="contained"
             onClick={() => setCurrentStep(2)}
             endIcon={<NextIcon />}
+            sx={{ fontSize: '1rem', px: 3, py: 1.5 }}
           >
-            Próximo: Ícones da Barra Superior
+            Próximo: Botões do Topo →
           </Button>
         </Box>
       </Box>
@@ -231,17 +272,17 @@ const WelcomeWizard = ({ open, onComplete }) => {
   );
 
   // =============================================
-  // STEP 3: INTERFACE DO SISTEMA
+  // STEP 3: INTERFACE DO SISTEMA (ELI5)
   // =============================================
   const InterfaceStep = () => (
     <Fade in timeout={800}>
       <Box sx={{ py: 3 }}>
-        <Typography variant="h4" textAlign="center" gutterBottom color="primary" fontWeight="bold">
-          🧭 Ícones da Barra Superior
+        <Typography variant="h4" textAlign="center" gutterBottom color="primary" fontWeight="bold" sx={{ fontSize: '2.2rem', mb: 2 }}>
+          🔘 Botões na Parte de Cima
         </Typography>
         
-        <Typography variant="h6" textAlign="center" color="text.secondary" sx={{ mb: 4 }}>
-          Conheça cada ícone do cabeçalho e suas funcionalidades
+        <Typography variant="h6" textAlign="center" color="text.secondary" sx={{ mb: 4, fontSize: '1.3rem', lineHeight: 1.6 }}>
+          Vamos conhecer para que serve cada botãozinho! 😊
         </Typography>
 
         {/* Simulação visual da barra superior */}
@@ -271,177 +312,150 @@ const WelcomeWizard = ({ open, onComplete }) => {
           <Brightness4 />
         </Box>
 
-        <Grid container spacing={2}>
-          {/* Coluna 1 - Ícones de Navegação */}
+        <Grid container spacing={3}>
+          {/* Coluna 1 - Botões Importantes */}
           <Grid item xs={12} md={6}>
-            <Card sx={{ mb: 2 }}>
-              <CardContent sx={{ p: 2 }}>
-                <Typography variant="h6" gutterBottom color="primary" fontWeight="bold">
-                  🚀 Navegação e Salas
+            <Card sx={{ mb: 2, border: '2px solid #e3f2fd' }}>
+              <CardContent sx={{ p: 3 }}>
+                <Typography variant="h5" gutterBottom color="primary" fontWeight="bold" sx={{ fontSize: '1.4rem', mb: 3 }}>
+                  🔧 Botões Mais Importantes
                 </Typography>
                 
-                <Box sx={{ mb: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <SharedIcon sx={{ fontSize: 20, color: 'primary.main', mr: 2 }} />
-                    <Typography variant="body2" fontWeight="bold">Trocar de Sala</Typography>
+                <Box sx={{ mb: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <SharedIcon sx={{ fontSize: 28, color: 'primary.main', mr: 2 }} />
+                    <Typography variant="h6" fontWeight="bold" sx={{ fontSize: '1.2rem' }}>🏠 Trocar de Sala</Typography>
                   </Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
-                    Abre o seletor para criar novas salas, entrar em salas existentes ou alternar entre projetos.
+                  <Typography variant="body1" color="text.secondary" sx={{ ml: 4, fontSize: '1.1rem', lineHeight: 1.6 }}>
+                    É como trocar de quarto! Você pode criar uma sala nova ou entrar numa sala que já existe.
                   </Typography>
                 </Box>
 
-                <Box sx={{ mb: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <CopyIcon sx={{ fontSize: 20, color: 'info.main', mr: 2 }} />
-                    <Typography variant="body2" fontWeight="bold">Copiar ID da Sala</Typography>
+                <Box sx={{ mb: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <CopyIcon sx={{ fontSize: 28, color: 'info.main', mr: 2 }} />
+                    <Typography variant="h6" fontWeight="bold" sx={{ fontSize: '1.2rem' }}>📋 Copiar Código</Typography>
                   </Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
-                    Copia o código da sala atual para compartilhar com sua equipe. Clique e o ID é copiado automaticamente!
+                  <Typography variant="body1" color="text.secondary" sx={{ ml: 4, fontSize: '1.1rem', lineHeight: 1.6 }}>
+                    Pega o código da sua sala para dar para seus amigos entrarem junto com você!
                   </Typography>
                 </Box>
 
-                <Box sx={{ mb: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <GoogleIcon sx={{ fontSize: 20, color: 'success.main', mr: 2 }} />
-                    <Typography variant="body2" fontWeight="bold">Google Sheets</Typography>
+                <Box sx={{ mb: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <GoogleIcon sx={{ fontSize: 28, color: 'success.main', mr: 2 }} />
+                    <Typography variant="h6" fontWeight="bold" sx={{ fontSize: '1.2rem' }}>💾 Google Sheets</Typography>
                   </Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
-                    Alterna entre modo local (navegador) e Google Sheets para exportar/sincronizar dados.
+                  <Typography variant="body1" color="text.secondary" sx={{ ml: 4, fontSize: '1.1rem', lineHeight: 1.6 }}>
+                    Salva suas tarefas no Google (como se fosse na nuvem) para não perder nada!
                   </Typography>
                 </Box>
               </CardContent>
             </Card>
           </Grid>
 
-          {/* Coluna 2 - Ícones de Autenticação */}
+          {/* Coluna 2 - Login e Conta */}
           <Grid item xs={12} md={6}>
-            <Card sx={{ mb: 2 }}>
-              <CardContent sx={{ p: 2 }}>
-                <Typography variant="h6" gutterBottom color="secondary" fontWeight="bold">
-                  🔐 Autenticação (quando configurado)
+            <Card sx={{ mb: 2, border: '2px solid #e8f5e8' }}>
+              <CardContent sx={{ p: 3 }}>
+                <Typography variant="h5" gutterBottom color="secondary" fontWeight="bold" sx={{ fontSize: '1.4rem', mb: 3 }}>
+                  👤 Sua Conta Pessoal
                 </Typography>
                 
-                <Box sx={{ mb: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Typography sx={{ fontSize: 20, mr: 2 }}>📝</Typography>
-                    <Typography variant="body2" fontWeight="bold">Cadastrar Usuário</Typography>
+                <Box sx={{ mb: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Typography sx={{ fontSize: 28, mr: 2 }}>📝</Typography>
+                    <Typography variant="h6" fontWeight="bold" sx={{ fontSize: '1.2rem' }}>✨ Criar Conta</Typography>
                   </Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
-                    Criar nova conta no sistema quando Supabase está configurado.
+                  <Typography variant="body1" color="text.secondary" sx={{ ml: 4, fontSize: '1.1rem', lineHeight: 1.6 }}>
+                    Como fazer uma conta nova no site, igual quando você cria conta no Instagram!
                   </Typography>
                 </Box>
 
-                <Box sx={{ mb: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Typography sx={{ fontSize: 20, mr: 2 }}>🔐</Typography>
-                    <Typography variant="body2" fontWeight="bold">Fazer Login</Typography>
+                <Box sx={{ mb: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Typography sx={{ fontSize: 28, mr: 2 }}>🔐</Typography>
+                    <Typography variant="h6" fontWeight="bold" sx={{ fontSize: '1.2rem' }}>🚪 Entrar</Typography>
                   </Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
-                    Entrar com usuário existente para sincronizar dados na nuvem.
+                  <Typography variant="body1" color="text.secondary" sx={{ ml: 4, fontSize: '1.1rem', lineHeight: 1.6 }}>
+                    Entrar na sua conta que você já criou antes (com email e senha).
                   </Typography>
                 </Box>
 
-                <Box sx={{ mb: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Typography sx={{ fontSize: 20, mr: 2 }}>👤</Typography>
-                    <Typography variant="body2" fontWeight="bold">Usuário Logado</Typography>
+                <Box sx={{ mb: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Typography sx={{ fontSize: 28, mr: 2 }}>👋</Typography>
+                    <Typography variant="h6" fontWeight="bold" sx={{ fontSize: '1.2rem' }}>📤 Sair</Typography>
                   </Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
-                    Mostra email do usuário logado. Clique para fazer logout.
-                  </Typography>
-                </Box>
-
-                <Box sx={{ mb: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Typography sx={{ fontSize: 20, mr: 2 }}>📦</Typography>
-                    <Typography variant="body2" fontWeight="bold">Migrar Dados</Typography>
-                  </Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
-                    Migra dados do localStorage para Supabase quando logado.
+                  <Typography variant="body1" color="text.secondary" sx={{ ml: 4, fontSize: '1.1rem', lineHeight: 1.6 }}>
+                    Quando você quer sair da sua conta (como fazer logout).
                   </Typography>
                 </Box>
               </CardContent>
             </Card>
           </Grid>
 
-          {/* Coluna 3 - Ícones de Ferramentas */}
+          {/* Coluna 3 - Ferramentas Úteis */}
           <Grid item xs={12} md={6}>
-            <Card sx={{ mb: 2 }}>
-              <CardContent sx={{ p: 2 }}>
-                <Typography variant="h6" gutterBottom color="warning.main" fontWeight="bold">
-                  🛠️ Ferramentas e Testes
+            <Card sx={{ mb: 2, border: '2px solid #fff3e0' }}>
+              <CardContent sx={{ p: 3 }}>
+                <Typography variant="h5" gutterBottom color="warning.main" fontWeight="bold" sx={{ fontSize: '1.4rem', mb: 3 }}>
+                  🛠️ Ferramentas Legais
                 </Typography>
                 
-                <Box sx={{ mb: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Typography sx={{ fontSize: 20, mr: 2 }}>🎯</Typography>
-                    <Typography variant="body2" fontWeight="bold">Testar Wizard</Typography>
+                <Box sx={{ mb: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Typography sx={{ fontSize: 28, mr: 2 }}>📁</Typography>
+                    <Typography variant="h6" fontWeight="bold" sx={{ fontSize: '1.2rem' }}>💾 Baixar Tarefas</Typography>
                   </Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
-                    Abre o wizard de primeiro acesso para testar ou refazer configuração inicial.
+                  <Typography variant="body1" color="text.secondary" sx={{ ml: 4, fontSize: '1.1rem', lineHeight: 1.6 }}>
+                    Baixa todas suas tarefas para o computador (como fazer backup).
                   </Typography>
                 </Box>
 
-                <Box sx={{ mb: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Typography sx={{ fontSize: 20, mr: 2 }}>🧪</Typography>
-                    <Typography variant="body2" fontWeight="bold">Testes de Integração</Typography>
+                <Box sx={{ mb: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Typography sx={{ fontSize: 28, mr: 2 }}>🌙</Typography>
+                    <Typography variant="h6" fontWeight="bold" sx={{ fontSize: '1.2rem' }}>🌞 Mudar Cor</Typography>
                   </Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
-                    Abre painel de testes para desenvolvedores verificarem funcionalidades.
+                  <Typography variant="body1" color="text.secondary" sx={{ ml: 4, fontSize: '1.1rem', lineHeight: 1.6 }}>
+                    Deixa a tela escura (modo noturno) ou clara (modo normal).
                   </Typography>
                 </Box>
               </CardContent>
             </Card>
           </Grid>
 
-          {/* Coluna 4 - Ícones de Sistema */}
+          {/* Coluna 4 - Botão Especial */}
           <Grid item xs={12} md={6}>
-            <Card sx={{ mb: 2 }}>
-              <CardContent sx={{ p: 2 }}>
-                <Typography variant="h6" gutterBottom color="error.main" fontWeight="bold">
-                  ⚙️ Sistema e Dados
+            <Card sx={{ mb: 2, border: '2px solid #ffebee' }}>
+              <CardContent sx={{ p: 3 }}>
+                <Typography variant="h5" gutterBottom color="error.main" fontWeight="bold" sx={{ fontSize: '1.4rem', mb: 3 }}>
+                  ⚠️ Botão de Cuidado
                 </Typography>
                 
-                <Box sx={{ mb: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <DownloadIcon sx={{ fontSize: 20, color: 'info.main', mr: 2 }} />
-                    <Typography variant="body2" fontWeight="bold">Download de Dados</Typography>
+                <Box sx={{ mb: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <DeleteIcon sx={{ fontSize: 28, color: 'error.main', mr: 2 }} />
+                    <Typography variant="h6" fontWeight="bold" sx={{ fontSize: '1.2rem' }}>🗑️ Apagar Tudo</Typography>
                   </Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
-                    Baixa todas as tarefas em formato JSON para backup ou análise externa.
+                  <Typography variant="body1" color="text.secondary" sx={{ ml: 4, fontSize: '1.1rem', lineHeight: 1.6 }}>
+                    <strong>Cuidado!</strong> Este botão apaga TODAS as suas tarefas. Só use se tiver certeza!
                   </Typography>
-                </Box>
-
-                <Box sx={{ mb: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <DeleteIcon sx={{ fontSize: 20, color: 'error.main', mr: 2 }} />
-                    <Typography variant="body2" fontWeight="bold">Zerar Atividades</Typography>
-                  </Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
-                    Remove todas as tarefas da sala atual. ⚠️ Ação irreversível!
-                  </Typography>
-                </Box>
-
-                <Box sx={{ mb: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Brightness4 sx={{ fontSize: 20, color: 'text.secondary', mr: 2 }} />
-                    <Typography variant="body2" fontWeight="bold">Modo Escuro</Typography>
-                  </Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
-                    Alterna entre tema claro e escuro da interface.
-                  </Typography>
+                  <Alert severity="warning" sx={{ mt: 2, ml: 4 }}>
+                    É como jogar tudo no lixo - não tem como desfazer!
+                  </Alert>
                 </Box>
               </CardContent>
             </Card>
           </Grid>
         </Grid>
 
-        <Alert severity="info" sx={{ mt: 3, mb: 3 }}>
-          <Typography variant="body2">
-            <TipIcon sx={{ fontSize: 16, mr: 1, verticalAlign: 'middle' }} />
-            <strong>Dica:</strong> Alguns ícones só aparecem em contextos específicos (usuário logado, Supabase configurado, etc.). 
-            Passe o mouse sobre qualquer ícone para ver uma explicação rápida!
+        <Alert severity="success" sx={{ mt: 4, mb: 3, fontSize: '1.1rem', py: 2 }}>
+          <Typography variant="body1" sx={{ fontSize: '1.1rem', lineHeight: 1.6 }}>
+            <TipIcon sx={{ fontSize: 20, mr: 1, verticalAlign: 'middle' }} />
+            <strong>Dica legal:</strong> Se você passar o mouse em cima de qualquer botão, 
+            vai aparecer uma explicação rapidinha do que ele faz! 🖱️✨
           </Typography>
         </Alert>
 
@@ -450,15 +464,17 @@ const WelcomeWizard = ({ open, onComplete }) => {
             variant="outlined"
             onClick={() => setCurrentStep(1)}
             startIcon={<BackIcon />}
+            sx={{ fontSize: '1rem', px: 3, py: 1.5 }}
           >
-            Voltar
+            ← Voltar
           </Button>
           <Button
             variant="contained"
             onClick={() => setCurrentStep(3)}
             endIcon={<NextIcon />}
+            sx={{ fontSize: '1rem', px: 3, py: 1.5 }}
           >
-            Próximo: Modos de Trabalho
+            Próximo: Como Trabalhar →
           </Button>
         </Box>
       </Box>
@@ -466,43 +482,50 @@ const WelcomeWizard = ({ open, onComplete }) => {
   );
 
   // =============================================
-  // STEP 4: MODOS DE TRABALHO
+  // STEP 4: MODOS DE TRABALHO (ELI5)
   // =============================================
   const WorkModesStep = () => (
     <Fade in timeout={800}>
       <Box sx={{ py: 3 }}>
-        <Typography variant="h4" textAlign="center" gutterBottom color="primary" fontWeight="bold">
-          💾 Como Você Quer Trabalhar?
+        <Typography variant="h4" textAlign="center" gutterBottom color="primary" fontWeight="bold" sx={{ fontSize: '2.2rem', mb: 2 }}>
+          🏠 Onde Você Quer Guardar Suas Tarefas?
         </Typography>
         
-        <Typography variant="h6" textAlign="center" color="text.secondary" sx={{ mb: 4 }}>
-          Escolha a melhor forma de armazenar e compartilhar seus dados
+        <Typography variant="h6" textAlign="center" color="text.secondary" sx={{ mb: 4, fontSize: '1.3rem', lineHeight: 1.6 }}>
+          É como escolher onde guardar seus brinquedos! 😊
         </Typography>
 
         <Grid container spacing={3}>
           {/* Modo Local */}
           <Grid item xs={12} md={4}>
             <Zoom in timeout={600}>
-              <Card sx={{ height: '100%', border: '2px solid transparent', transition: 'all 0.3s' }}>
-                <CardContent sx={{ textAlign: 'center', p: 3 }}>
-                  <LocalIcon sx={{ fontSize: 60, color: 'info.main', mb: 2 }} />
-                  <Typography variant="h6" gutterBottom fontWeight="bold">
-                    💻 Modo Local
+              <Card sx={{ height: '100%', border: '3px solid #e3f2fd', transition: 'all 0.3s', '&:hover': { transform: 'translateY(-4px)' } }}>
+                <CardContent sx={{ textAlign: 'center', p: 4 }}>
+                  <LocalIcon sx={{ fontSize: 80, color: 'info.main', mb: 3 }} />
+                  <Typography variant="h5" gutterBottom fontWeight="bold" sx={{ fontSize: '1.5rem', mb: 2 }}>
+                    💻 No Meu Computador
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" paragraph>
-                    Os dados ficam salvos apenas no seu navegador. Ideal para trabalho 
-                    individual ou equipes pequenas que compartilham um computador.
+                  <Typography variant="body1" color="text.secondary" paragraph sx={{ fontSize: '1.1rem', lineHeight: 1.6, mb: 3 }}>
+                    É como guardar seus brinquedos na sua gaveta! 
+                    Suas tarefas ficam só no seu computador.
                   </Typography>
                   
-                  <Box sx={{ mb: 2 }}>
-                    <Chip label="✅ Mais rápido" size="small" color="success" sx={{ m: 0.5 }} />
-                    <Chip label="✅ Funciona offline" size="small" color="success" sx={{ m: 0.5 }} />
-                    <Chip label="✅ Zero configuração" size="small" color="success" sx={{ m: 0.5 }} />
-                  </Box>
+                  <Alert severity="success" sx={{ mb: 2, textAlign: 'left' }}>
+                    <Typography variant="body2" sx={{ fontSize: '1rem' }}>
+                      <strong>Bom porque:</strong><br/>
+                      🚀 Super rápido<br/>
+                      ⚡ Funciona sem internet<br/>
+                      🔧 Não precisa configurar nada
+                    </Typography>
+                  </Alert>
                   
-                  <Typography variant="caption" color="warning.main">
-                    ⚠️ Dados não sincronizam entre dispositivos
-                  </Typography>
+                  <Alert severity="warning" sx={{ textAlign: 'left' }}>
+                    <Typography variant="body2" sx={{ fontSize: '1rem' }}>
+                      <strong>Mas cuidado:</strong><br/>
+                      📱 Só funciona no seu computador<br/>
+                      💾 Se formatou, perdeu tudo
+                    </Typography>
+                  </Alert>
                 </CardContent>
               </Card>
             </Zoom>
@@ -511,26 +534,33 @@ const WelcomeWizard = ({ open, onComplete }) => {
           {/* Modo Nuvem */}
           <Grid item xs={12} md={4}>
             <Zoom in timeout={800}>
-              <Card sx={{ height: '100%', border: '2px solid transparent', transition: 'all 0.3s' }}>
-                <CardContent sx={{ textAlign: 'center', p: 3 }}>
-                  <CloudIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
-                  <Typography variant="h6" gutterBottom fontWeight="bold">
-                    ☁️ Modo Nuvem
+              <Card sx={{ height: '100%', border: '3px solid #e8f5e8', transition: 'all 0.3s', '&:hover': { transform: 'translateY(-4px)' } }}>
+                <CardContent sx={{ textAlign: 'center', p: 4 }}>
+                  <CloudIcon sx={{ fontSize: 80, color: 'primary.main', mb: 3 }} />
+                  <Typography variant="h5" gutterBottom fontWeight="bold" sx={{ fontSize: '1.5rem', mb: 2 }}>
+                    ☁️ Na Nuvem
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" paragraph>
-                    Dados salvos na nuvem com acesso de qualquer dispositivo. 
-                    Perfeito para equipes distribuídas e trabalho remoto.
+                  <Typography variant="body1" color="text.secondary" paragraph sx={{ fontSize: '1.1rem', lineHeight: 1.6, mb: 3 }}>
+                    É como guardar suas coisas na nuvem do Google! 
+                    Você pode acessar de qualquer lugar.
                   </Typography>
                   
-                  <Box sx={{ mb: 2 }}>
-                    <Chip label="✅ Acesso em qualquer lugar" size="small" color="success" sx={{ m: 0.5 }} />
-                    <Chip label="✅ Backup automático" size="small" color="success" sx={{ m: 0.5 }} />
-                    <Chip label="✅ Controle de acesso" size="small" color="success" sx={{ m: 0.5 }} />
-                  </Box>
+                  <Alert severity="success" sx={{ mb: 2, textAlign: 'left' }}>
+                    <Typography variant="body2" sx={{ fontSize: '1rem' }}>
+                      <strong>Incrível porque:</strong><br/>
+                      🌍 Acessa de qualquer lugar<br/>
+                      🔄 Nunca perde nada<br/>
+                      👥 Trabalha com amigos
+                    </Typography>
+                  </Alert>
                   
-                  <Typography variant="caption" color="info.main">
-                    📝 Requer cadastro e login
-                  </Typography>
+                  <Alert severity="info" sx={{ textAlign: 'left' }}>
+                    <Typography variant="body2" sx={{ fontSize: '1rem' }}>
+                      <strong>Só precisa:</strong><br/>
+                      📧 Criar uma conta<br/>
+                      🔐 Fazer login sempre
+                    </Typography>
+                  </Alert>
                 </CardContent>
               </Card>
             </Zoom>
@@ -539,37 +569,44 @@ const WelcomeWizard = ({ open, onComplete }) => {
           {/* Modo Compartilhado */}
           <Grid item xs={12} md={4}>
             <Zoom in timeout={1000}>
-              <Card sx={{ height: '100%', border: '2px solid transparent', transition: 'all 0.3s' }}>
-                <CardContent sx={{ textAlign: 'center', p: 3 }}>
-                  <SharedIcon sx={{ fontSize: 60, color: 'secondary.main', mb: 2 }} />
-                  <Typography variant="h6" gutterBottom fontWeight="bold">
-                    🔗 Sala Compartilhada
+              <Card sx={{ height: '100%', border: '3px solid #fff3e0', transition: 'all 0.3s', '&:hover': { transform: 'translateY(-4px)' } }}>
+                <CardContent sx={{ textAlign: 'center', p: 4 }}>
+                  <SharedIcon sx={{ fontSize: 80, color: 'secondary.main', mb: 3 }} />
+                  <Typography variant="h5" gutterBottom fontWeight="bold" sx={{ fontSize: '1.5rem', mb: 2 }}>
+                    🎮 Sala do Amigo
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" paragraph>
-                    Entre em uma sala já criada por outro usuário usando um código. 
-                    Ideal para colaborar em projetos existentes.
+                  <Typography variant="body1" color="text.secondary" paragraph sx={{ fontSize: '1.1rem', lineHeight: 1.6, mb: 3 }}>
+                    É como ir brincar na casa do seu amigo! 
+                    Você entra numa sala que alguém já criou.
                   </Typography>
                   
-                  <Box sx={{ mb: 2 }}>
-                    <Chip label="✅ Colaboração imediata" size="small" color="success" sx={{ m: 0.5 }} />
-                    <Chip label="✅ Sem configuração" size="small" color="success" sx={{ m: 0.5 }} />
-                    <Chip label="✅ Acesso controlado" size="small" color="success" sx={{ m: 0.5 }} />
-                  </Box>
+                  <Alert severity="success" sx={{ mb: 2, textAlign: 'left' }}>
+                    <Typography variant="body2" sx={{ fontSize: '1rem' }}>
+                      <strong>Legal porque:</strong><br/>
+                      👫 Trabalha junto na hora<br/>
+                      🎯 Não precisa configurar<br/>
+                      🔒 O dono controla quem entra
+                    </Typography>
+                  </Alert>
                   
-                  <Typography variant="caption" color="secondary.main">
-                    🔑 Precisa do código da sala
-                  </Typography>
+                  <Alert severity="warning" sx={{ textAlign: 'left' }}>
+                    <Typography variant="body2" sx={{ fontSize: '1rem' }}>
+                      <strong>Só precisa:</strong><br/>
+                      🔑 Do código da sala<br/>
+                      👤 Alguém te dar o código
+                    </Typography>
+                  </Alert>
                 </CardContent>
               </Card>
             </Zoom>
           </Grid>
         </Grid>
 
-        <Alert severity="info" sx={{ mt: 4, mb: 3 }}>
-          <Typography variant="body2">
-            <TipIcon sx={{ fontSize: 16, mr: 1, verticalAlign: 'middle' }} />
-            <strong>Dica:</strong> Você pode mudar o modo de trabalho a qualquer momento 
-            nas configurações do sistema. Comece com o que for mais simples para você!
+        <Alert severity="success" sx={{ mt: 4, mb: 3, fontSize: '1.1rem', py: 2 }}>
+          <Typography variant="body1" sx={{ fontSize: '1.1rem', lineHeight: 1.6 }}>
+            <TipIcon sx={{ fontSize: 20, mr: 1, verticalAlign: 'middle' }} />
+            <strong>Não se preocupe!</strong> Você pode mudar de ideia depois! 
+            É como trocar de quarto - sempre pode mudar se não gostar! 😊🔄
           </Typography>
         </Alert>
 
@@ -578,15 +615,17 @@ const WelcomeWizard = ({ open, onComplete }) => {
             variant="outlined"
             onClick={() => setCurrentStep(2)}
             startIcon={<BackIcon />}
+            sx={{ fontSize: '1rem', px: 3, py: 1.5 }}
           >
-            Voltar
+            ← Voltar
           </Button>
           <Button
             variant="contained"
             onClick={() => setCurrentStep(4)}
             endIcon={<NextIcon />}
+            sx={{ fontSize: '1rem', px: 3, py: 1.5 }}
           >
-            Próximo: Configurar
+            Próximo: Vamos Escolher →
           </Button>
         </Box>
       </Box>
@@ -594,17 +633,17 @@ const WelcomeWizard = ({ open, onComplete }) => {
   );
 
   // =============================================
-  // STEP 5: CONFIGURAÇÃO FINAL
+  // STEP 5: CONFIGURAÇÃO FINAL (ELI5)
   // =============================================
   const ConfigurationStep = () => (
     <Fade in timeout={800}>
       <Box sx={{ py: 3 }}>
-        <Typography variant="h4" textAlign="center" gutterBottom color="primary" fontWeight="bold">
-          🎯 Configuração Final
+        <Typography variant="h4" textAlign="center" gutterBottom color="primary" fontWeight="bold" sx={{ fontSize: '2.2rem', mb: 2 }}>
+          🎉 Agora É Só Escolher!
         </Typography>
         
-        <Typography variant="h6" textAlign="center" color="text.secondary" sx={{ mb: 4 }}>
-          Escolha seu modo preferido e vamos começar!
+        <Typography variant="h6" textAlign="center" color="text.secondary" sx={{ mb: 4, fontSize: '1.3rem', lineHeight: 1.6 }}>
+          Clique na opção que você quer e vamos começar a brincar! 🚀
         </Typography>
 
         {error && (
@@ -619,23 +658,32 @@ const WelcomeWizard = ({ open, onComplete }) => {
             <Card 
               sx={{ 
                 cursor: 'pointer',
-                border: selectedMode === 'local' ? '3px solid' : '2px solid transparent',
+                border: selectedMode === 'local' ? '4px solid' : '3px solid transparent',
                 borderColor: selectedMode === 'local' ? 'info.main' : 'transparent',
                 transition: 'all 0.3s',
-                '&:hover': { transform: 'translateY(-2px)', boxShadow: 3 }
+                '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 },
+                height: '100%'
               }}
               onClick={() => setSelectedMode('local')}
             >
-              <CardContent sx={{ textAlign: 'center', p: 3 }}>
-                <LocalIcon sx={{ fontSize: 50, color: 'info.main', mb: 2 }} />
-                <Typography variant="h6" gutterBottom fontWeight="bold">
-                  💻 Trabalhar Localmente
+              <CardContent sx={{ textAlign: 'center', p: 4 }}>
+                <LocalIcon sx={{ fontSize: 70, color: 'info.main', mb: 3 }} />
+                <Typography variant="h5" gutterBottom fontWeight="bold" sx={{ fontSize: '1.4rem', mb: 2 }}>
+                  💻 No Meu Computador
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Começar imediatamente com dados no navegador
+                <Typography variant="body1" color="text.secondary" sx={{ fontSize: '1.1rem', lineHeight: 1.6, mb: 2 }}>
+                  Começar agora mesmo!<br/>
+                  Rápido e fácil!
                 </Typography>
                 {selectedMode === 'local' && (
-                  <CheckCircle sx={{ color: 'success.main', mt: 2 }} />
+                  <Zoom in timeout={300}>
+                    <Box>
+                      <CheckCircle sx={{ color: 'success.main', fontSize: 40, mt: 2 }} />
+                      <Typography variant="body2" color="success.main" fontWeight="bold" sx={{ mt: 1 }}>
+                        ✨ Escolhido!
+                      </Typography>
+                    </Box>
+                  </Zoom>
                 )}
               </CardContent>
             </Card>
@@ -645,28 +693,36 @@ const WelcomeWizard = ({ open, onComplete }) => {
           <Grid item xs={12} sm={6} md={4}>
             <Card 
               sx={{ 
-                cursor: 'pointer',
-                border: selectedMode === 'cloud' ? '3px solid' : '2px solid transparent',
+                cursor: isSupabaseConfigured() ? 'pointer' : 'not-allowed',
+                border: selectedMode === 'cloud' ? '4px solid' : '3px solid transparent',
                 borderColor: selectedMode === 'cloud' ? 'primary.main' : 'transparent',
                 transition: 'all 0.3s',
-                '&:hover': { transform: 'translateY(-2px)', boxShadow: 3 },
-                opacity: !isSupabaseConfigured() ? 0.5 : 1
+                '&:hover': isSupabaseConfigured() ? { transform: 'translateY(-4px)', boxShadow: 6 } : {},
+                opacity: !isSupabaseConfigured() ? 0.5 : 1,
+                height: '100%'
               }}
               onClick={() => isSupabaseConfigured() && setSelectedMode('cloud')}
             >
-              <CardContent sx={{ textAlign: 'center', p: 3 }}>
-                <CloudIcon sx={{ fontSize: 50, color: 'primary.main', mb: 2 }} />
-                <Typography variant="h6" gutterBottom fontWeight="bold">
-                  ☁️ Trabalhar na Nuvem
+              <CardContent sx={{ textAlign: 'center', p: 4 }}>
+                <CloudIcon sx={{ fontSize: 70, color: 'primary.main', mb: 3 }} />
+                <Typography variant="h5" gutterBottom fontWeight="bold" sx={{ fontSize: '1.4rem', mb: 2 }}>
+                  ☁️ Na Nuvem
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body1" color="text.secondary" sx={{ fontSize: '1.1rem', lineHeight: 1.6, mb: 2 }}>
                   {isSupabaseConfigured() ? 
-                    'Criar conta e sincronizar dados' : 
-                    'Não disponível (não configurado)'
+                    'Acessar de qualquer lugar!<br/>Precisa criar conta!' : 
+                    'Não está funcionando<br/>agora 😅'
                   }
                 </Typography>
                 {selectedMode === 'cloud' && (
-                  <CheckCircle sx={{ color: 'success.main', mt: 2 }} />
+                  <Zoom in timeout={300}>
+                    <Box>
+                      <CheckCircle sx={{ color: 'success.main', fontSize: 40, mt: 2 }} />
+                      <Typography variant="body2" color="success.main" fontWeight="bold" sx={{ mt: 1 }}>
+                        ✨ Escolhido!
+                      </Typography>
+                    </Box>
+                  </Zoom>
                 )}
               </CardContent>
             </Card>
@@ -677,23 +733,31 @@ const WelcomeWizard = ({ open, onComplete }) => {
             <Card 
               sx={{ 
                 cursor: 'pointer',
-                border: selectedMode === 'shared' ? '3px solid' : '2px solid transparent',
+                border: selectedMode === 'shared' ? '4px solid' : '3px solid transparent',
                 borderColor: selectedMode === 'shared' ? 'secondary.main' : 'transparent',
                 transition: 'all 0.3s',
-                '&:hover': { transform: 'translateY(-2px)', boxShadow: 3 }
+                '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 },
+                height: '100%'
               }}
               onClick={() => setSelectedMode('shared')}
             >
-              <CardContent sx={{ textAlign: 'center', p: 3 }}>
-                <SharedIcon sx={{ fontSize: 50, color: 'secondary.main', mb: 2 }} />
-                <Typography variant="h6" gutterBottom fontWeight="bold">
-                  🔗 Entrar em Sala
+              <CardContent sx={{ textAlign: 'center', p: 4 }}>
+                <SharedIcon sx={{ fontSize: 70, color: 'secondary.main', mb: 3 }} />
+                <Typography variant="h5" gutterBottom fontWeight="bold" sx={{ fontSize: '1.4rem', mb: 2 }}>
+                  🎮 Sala do Amigo
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Usar código de sala existente
+                <Typography variant="body1" color="text.secondary" sx={{ fontSize: '1.1rem', lineHeight: 1.6, mb: 2 }}>
+                  Entrar numa sala<br/>que já existe!
                 </Typography>
                 {selectedMode === 'shared' && (
-                  <CheckCircle sx={{ color: 'success.main', mt: 2 }} />
+                  <Zoom in timeout={300}>
+                    <Box>
+                      <CheckCircle sx={{ color: 'success.main', fontSize: 40, mt: 2 }} />
+                      <Typography variant="body2" color="success.main" fontWeight="bold" sx={{ mt: 1 }}>
+                        ✨ Escolhido!
+                      </Typography>
+                    </Box>
+                  </Zoom>
                 )}
               </CardContent>
             </Card>
@@ -703,15 +767,25 @@ const WelcomeWizard = ({ open, onComplete }) => {
         {/* Campo para código da sala se modo compartilhado */}
         {selectedMode === 'shared' && (
           <Fade in timeout={500}>
-            <Box sx={{ maxWidth: 400, mx: 'auto', mt: 3 }}>
+            <Box sx={{ maxWidth: 450, mx: 'auto', mt: 4 }}>
+              <Alert severity="info" sx={{ mb: 3, fontSize: '1rem' }}>
+                <Typography variant="body1" sx={{ fontSize: '1.1rem' }}>
+                  🔑 <strong>Agora digite o código que seu amigo te deu!</strong>
+                </Typography>
+              </Alert>
               <TextField
                 fullWidth
-                label="Código da Sala"
-                placeholder="Ex: ABC123"
+                label="🔑 Código da Sala do Amigo"
+                placeholder="Digite aqui... Ex: ABC123"
                 value={roomCode}
                 onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
                 inputProps={{ maxLength: 10 }}
-                helperText="Digite o código fornecido pelo administrador da sala"
+                helperText="Seu amigo precisa te dar esse código primeiro!"
+                sx={{
+                  '& .MuiInputLabel-root': { fontSize: '1.1rem' },
+                  '& .MuiInputBase-input': { fontSize: '1.2rem', textAlign: 'center', fontWeight: 'bold' },
+                  '& .MuiFormHelperText-root': { fontSize: '1rem' }
+                }}
               />
             </Box>
           </Fade>
@@ -720,29 +794,36 @@ const WelcomeWizard = ({ open, onComplete }) => {
         {/* Informação sobre autenticação para modo nuvem */}
         {selectedMode === 'cloud' && (
           <Fade in timeout={500}>
-            <Alert severity="info" sx={{ maxWidth: 500, mx: 'auto', mt: 3 }}>
-              Você será direcionado para criar uma conta ou fazer login após finalizar o wizard.
+            <Alert severity="success" sx={{ maxWidth: 500, mx: 'auto', mt: 4, fontSize: '1rem', py: 2 }}>
+              <Typography variant="body1" sx={{ fontSize: '1.1rem', lineHeight: 1.6 }}>
+                🎉 <strong>Que legal!</strong> Depois de finalizar aqui, você vai ver uma tela 
+                para criar sua conta ou entrar se já tiver uma! É super fácil! 😊
+              </Typography>
             </Alert>
           </Fade>
         )}
 
         {loading && (
-          <Box sx={{ mt: 3 }}>
-            <LinearProgress />
-            <Typography variant="body2" textAlign="center" sx={{ mt: 1 }}>
-              Configurando sistema...
+          <Box sx={{ mt: 4 }}>
+            <LinearProgress sx={{ mb: 2 }} />
+            <Typography variant="h6" textAlign="center" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
+              🔧 Preparando tudo para você...
+            </Typography>
+            <Typography variant="body1" textAlign="center" sx={{ mt: 1, fontSize: '1rem' }}>
+              Só um segundinho! ⏳✨
             </Typography>
           </Box>
         )}
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 5 }}>
           <Button
             variant="outlined"
             onClick={() => setCurrentStep(3)}
             startIcon={<BackIcon />}
             disabled={loading}
+            sx={{ fontSize: '1rem', px: 3, py: 1.5 }}
           >
-            Voltar
+            ← Voltar
           </Button>
           <Button
             variant="contained"
@@ -750,9 +831,20 @@ const WelcomeWizard = ({ open, onComplete }) => {
             endIcon={<CompleteIcon />}
             disabled={!selectedMode || loading || (selectedMode === 'shared' && !roomCode.trim())}
             size="large"
-            sx={{ px: 4 }}
+            sx={{ 
+              px: 5, 
+              py: 2, 
+              fontSize: '1.2rem', 
+              fontWeight: 'bold',
+              background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+              '&:hover': {
+                background: 'linear-gradient(45deg, #1976D2 30%, #1BA3D3 90%)',
+                transform: 'translateY(-2px)',
+                boxShadow: 6
+              }
+            }}
           >
-            {loading ? 'Configurando...' : 'Finalizar Configuração'}
+            {loading ? '🔧 Configurando...' : '🚀 Vamos Começar!'}
           </Button>
         </Box>
       </Box>

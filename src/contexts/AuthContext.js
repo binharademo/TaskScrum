@@ -98,7 +98,7 @@ export const AuthProvider = ({ children }) => {
       return { 
         success: true, 
         data,
-        needsConfirmation: !data.session 
+        needsConfirmation: false // Desabilitado - não precisa confirmar email
       };
     } catch (err) {
       const errorMessage = err.message || 'Erro ao criar conta';
