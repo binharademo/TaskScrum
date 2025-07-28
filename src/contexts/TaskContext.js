@@ -171,7 +171,8 @@ export const TaskProvider = ({ children }) => {
       try {
         const newTask = {
           ...task,
-          id: task.id || `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          // Só gerar ID customizado se não estiver em modo Supabase
+          id: isSupabaseMode ? undefined : (task.id || `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`),
           createdAt: task.createdAt || new Date().toISOString(),
           updatedAt: task.updatedAt || new Date().toISOString()
         };

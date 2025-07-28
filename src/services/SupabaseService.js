@@ -25,20 +25,31 @@ export class SupabaseService extends DataService {
 
   async initialize() {
     try {
+      console.log('🔧 SupabaseService.initialize() - iniciando...');
+      console.log('🔗 URL:', this.supabase?.supabaseUrl);
+      console.log('🔑 Key configurada:', !!this.supabase?.supabaseKey);
+      
       // Test connection with a simple query
+      console.log('📡 Testando conexão com query simples...');
       const { data, error } = await this.supabase
         .from('rooms')
         .select('count', { count: 'exact', head: true });
 
+      console.log('📊 Resposta do Supabase - data:', data);
+      console.log('⚠️ Resposta do Supabase - error:', error);
+
       if (error) {
-        throw new Error(`Supabase connection failed: ${error.message}`);
+        console.error('❌ Erro na query:', error.code, error.message, error.details, error.hint);
+        throw new Error(`Supabase connection failed: ${error.message} (code: ${error.code})`);
       }
 
       this.initialized = true;
       this.emit('initialized', { service: 'SupabaseService' });
       
+      console.log('✅ SupabaseService inicializado com sucesso!');
       return { success: true, message: 'SupabaseService initialized successfully' };
     } catch (error) {
+      console.error('💥 Erro na inicialização do SupabaseService:', error);
       throw new Error(`Failed to initialize SupabaseService: ${error.message}`);
     }
   }
@@ -132,8 +143,8 @@ export class SupabaseService extends DataService {
         name: roomData.name || 'Nova Sala',
         description: roomData.description || null,
         is_public: roomData.is_public || false,
-        owner_id: user.id
-        // room_code será gerado automaticamente pelo trigger
+        owner_id: user.id,
+        room_code: roomData.room_code || '' // Será gerado automaticamente pelo trigger se vazio
       };
 
       const { data, error } = await this.supabase
@@ -212,6 +223,75 @@ export class SupabaseService extends DataService {
   setCurrentRoom(roomId) {
     this.currentRoomId = roomId;
     this.emit('roomChanged', { roomId });
+  }
+
+  async getUserRooms(filters = {}) {
+    if (!this.initialized) {
+      throw new Error('SupabaseService not initialized');
+    }
+
+    try {
+      // Get current user
+      const { data: { user }, error: userError } = await this.supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      let query = this.supabase
+        .from('rooms')
+        .select(`
+          *,
+          room_access!inner(role)
+        `)
+        .eq('room_access.user_id', user.id);
+
+      // Apply filters
+      if (filters.search) {
+        query = query.ilike('name', `%${filters.search}%`);
+      }
+
+      if (filters.is_public !== undefined) {
+        query = query.eq('is_public', filters.is_public);
+      }
+
+      // Order by updated_at desc
+      query = query.order('updated_at', { ascending: false });
+
+      const { data, error } = await query;
+
+      if (error) {
+        throw new Error(`Failed to get user rooms: ${error.message}`);
+      }
+
+      return data || [];
+    } catch (error) {
+      throw new Error(`Failed to get user rooms: ${error.message}`);
+    }
+  }
+
+  async findRoomByCode(roomCode) {
+    if (!this.initialized) {
+      throw new Error('SupabaseService not initialized');
+    }
+
+    try {
+      const { data, error } = await this.supabase
+        .from('rooms')
+        .select('*')
+        .eq('room_code', roomCode.toUpperCase())
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return null; // Not found
+        }
+        throw new Error(`Failed to find room: ${error.message}`);
+      }
+
+      return data;
+    } catch (error) {
+      throw new Error(`Failed to find room: ${error.message}`);
+    }
   }
 
   // ===============================================
@@ -329,6 +409,13 @@ export class SupabaseService extends DataService {
       supabaseTask.room_id = this.currentRoomId;
       supabaseTask.created_by = user.id;
       supabaseTask.updated_by = user.id;
+      
+      // Remove timestamps and custom IDs - let database generate them
+      delete supabaseTask.created_at;
+      delete supabaseTask.updated_at;
+      delete supabaseTask.createdAt;
+      delete supabaseTask.updatedAt;
+      delete supabaseTask.id; // Let Supabase generate UUID
 
       const { data, error } = await this.supabase
         .from('tasks')
@@ -363,7 +450,10 @@ export class SupabaseService extends DataService {
       // Convert updates to Supabase format
       const supabaseUpdates = this._convertToSupabaseFormat(updates);
       supabaseUpdates.updated_by = user.id;
-      supabaseUpdates.updated_at = this.generateTimestamp();
+      
+      // Remove timestamp fields - let database generate them
+      delete supabaseUpdates.updated_at;
+      delete supabaseUpdates.updatedAt;
 
       const { data, error } = await this.supabase
         .from('tasks')
@@ -585,10 +675,20 @@ export class SupabaseService extends DataService {
     // Convert TaskTracker format to Supabase column names
     const converted = { ...taskData };
     
-    // Most fields are already compatible, just handle special cases
+    // Convert camelCase to snake_case for special fields
     if (converted.userStory) {
       converted.user_story = converted.userStory;
       delete converted.userStory;
+    }
+
+    if (converted.createdAt) {
+      converted.created_at = converted.createdAt;
+      delete converted.createdAt;
+    }
+
+    if (converted.updatedAt) {
+      converted.updated_at = converted.updatedAt;
+      delete converted.updatedAt;
     }
 
     return converted;

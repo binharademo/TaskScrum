@@ -24,7 +24,8 @@ import {
   Warning as WarningIcon,
   ExpandMore as ExpandMoreIcon,
   PlayArrow as PlayIcon,
-  BugReport as TestIcon
+  BugReport as TestIcon,
+  ContentCopy as CopyIcon
 } from '@mui/icons-material';
 
 // Services
@@ -36,6 +37,7 @@ import { loadTasksFromStorage, getAvailableRooms } from '../utils/storage';
 const IntegrationTests = ({ open, onClose }) => {
   const [running, setRunning] = useState(false);
   const [results, setResults] = useState([]);
+  const [copySuccess, setCopySuccess] = useState(false);
   
   const auth = useAuth();
 
@@ -49,6 +51,11 @@ const IntegrationTests = ({ open, onClose }) => {
       id: 'auth',
       name: '🔐 Verificar Autenticação',
       description: 'Testa se o usuário está autenticado'  
+    },
+    {
+      id: 'tables',
+      name: '📋 Verificar Estrutura das Tabelas',
+      description: 'Confirma se as tabelas necessárias existem no banco'
     },
     {
       id: 'database',
@@ -90,6 +97,9 @@ const IntegrationTests = ({ open, onClose }) => {
             break;
           case 'auth':
             result = await testAuthentication();
+            break;
+          case 'tables':
+            result = await testTablesStructure();
             break;
           case 'database':
             result = await testDatabaseConnection();
@@ -180,6 +190,66 @@ const IntegrationTests = ({ open, onClose }) => {
     };
   };
 
+  const testTablesStructure = async () => {
+    try {
+      console.log('🔍 Verificando estrutura das tabelas...');
+      const { createClient } = await import('@supabase/supabase-js');
+      const testClient = createClient(
+        process.env.REACT_APP_SUPABASE_URL, 
+        process.env.REACT_APP_SUPABASE_ANON_KEY
+      );
+
+      const requiredTables = ['rooms', 'tasks', 'room_access', 'user_settings'];
+      const tableResults = [];
+
+      for (const tableName of requiredTables) {
+        try {
+          console.log(`📋 Testando tabela: ${tableName}`);
+          const { data, error } = await testClient
+            .from(tableName)
+            .select('*')
+            .limit(1);
+
+          if (error) {
+            console.error(`❌ Erro na tabela ${tableName}:`, error);
+            tableResults.push(`❌ ${tableName}: ${error.message}`);
+          } else {
+            console.log(`✅ Tabela ${tableName}: OK`);
+            tableResults.push(`✅ ${tableName}: OK`);
+          }
+        } catch (tableError) {
+          console.error(`💥 Erro crítico na tabela ${tableName}:`, tableError);
+          tableResults.push(`💥 ${tableName}: ${tableError.message}`);
+        }
+      }
+
+      const allTablesOK = tableResults.every(result => result.includes('✅'));
+
+      return {
+        success: allTablesOK,
+        message: allTablesOK 
+          ? `✅ Todas as tabelas encontradas:\n${tableResults.join('\n')}`
+          : `❌ Problemas encontrados:\n${tableResults.join('\n')}\n\n` +
+            `💡 SOLUÇÃO: Execute o script SQL no Supabase Dashboard:\n` +
+            `1. Acesse https://supabase.com/dashboard\n` +
+            `2. Vá em SQL Editor\n` +
+            `3. Cole e execute o script SQL completo\n` +
+            `4. Script disponível em: docs/supabase-setup.sql`
+      };
+    } catch (error) {
+      console.error('💥 Erro ao verificar tabelas:', error);
+      return {
+        success: false,
+        message: `Erro ao verificar tabelas: ${error.message}\n\n` +
+                `🔍 Possíveis causas:\n` +
+                `• Credenciais inválidas\n` +
+                `• Projeto Supabase não existe\n` +
+                `• Problema de rede\n\n` +
+                `💡 Verifique suas credenciais em .env.local`
+      };
+    }
+  };
+
   const testDatabaseConnection = async () => {
     if (!auth?.isAuthenticated) {
       return { 
@@ -189,19 +259,45 @@ const IntegrationTests = ({ open, onClose }) => {
     }
 
     try {
+      // Log detalhado para debug
+      console.log('🔍 Iniciando teste de conexão Supabase...');
+      console.log('📧 Usuário autenticado:', auth.user?.email);
+      console.log('🔗 URL Supabase:', process.env.REACT_APP_SUPABASE_URL);
+      console.log('🔑 Key (primeiros 20 chars):', process.env.REACT_APP_SUPABASE_ANON_KEY?.substring(0, 20) + '...');
+
       const service = new SupabaseService();
+      console.log('✅ SupabaseService criado');
+      
+      // Inicializar o serviço primeiro
+      console.log('🔄 Inicializando serviço...');
+      await service.initialize();
+      console.log('✅ Serviço inicializado');
       
       // Tentar buscar rooms (teste simples de conectividade)
+      console.log('🏠 Buscando salas do usuário...');
       const rooms = await service.getUserRooms();
+      console.log('✅ Salas encontradas:', rooms.length);
       
       return { 
         success: true, 
-        message: `Conexão OK. ${rooms.length} salas encontradas.` 
+        message: `Conexão OK. ${rooms.length} salas encontradas.\n` +
+                `👤 Usuário: ${auth.user?.email}\n` +
+                `🔗 URL: ${process.env.REACT_APP_SUPABASE_URL}\n` +
+                `📊 Projeto ativo: ${service.initialized}`
       };
     } catch (error) {
+      console.error('❌ Erro detalhado na conexão:', error);
+      console.error('📋 Stack trace:', error.stack);
+      
       return { 
         success: false, 
-        message: `Erro de conexão: ${error.message}` 
+        message: `Erro de conexão: ${error.message}\n\n` +
+                `🔍 Detalhes do erro:\n` +
+                `• Tipo: ${error.name}\n` +
+                `• Causa: ${error.cause?.message || 'N/A'}\n` +
+                `• URL: ${process.env.REACT_APP_SUPABASE_URL}\n` +
+                `• Auth: ${auth?.isAuthenticated ? 'OK' : 'FALHA'}\n\n` +
+                `💡 Verifique o console do navegador para logs detalhados`
       };
     }
   };
@@ -216,6 +312,10 @@ const IntegrationTests = ({ open, onClose }) => {
 
     try {
       const service = new SupabaseService();
+      
+      // Inicializar o serviço primeiro
+      await service.initialize();
+      
       const testRoomCode = `TEST_${Date.now()}`;
       
       // Criar sala de teste
@@ -261,25 +361,31 @@ const IntegrationTests = ({ open, onClose }) => {
     try {
       const service = new SupabaseService();
       
-      // Buscar uma sala existente ou usar a primeira disponível
-      const rooms = await service.getUserRooms();
-      if (rooms.length === 0) {
-        return { 
-          success: false, 
-          message: 'Nenhuma sala disponível para teste' 
-        };
-      }
-
-      const testRoom = rooms[0];
+      // Inicializar o serviço primeiro
+      await service.initialize();
       
-      // Criar tarefa de teste
+      // Buscar uma sala existente ou criar uma para teste
+      let rooms = await service.getUserRooms();
+      let testRoom = rooms[0];
+      
+      if (rooms.length === 0) {
+        // Criar uma sala de teste se não existir nenhuma
+        testRoom = await service.createRoom({
+          name: `Sala de Teste - ${Date.now()}`,
+          is_public: false
+        });
+      }
+      
+      // Definir a sala atual para permitir operações de tarefas
+      service.setCurrentRoom(testRoom.id);
+      
+      // Criar tarefa de teste (sem ID - deixar Supabase gerar)
       const testTask = {
-        room_id: testRoom.id,
         atividade: `Teste CRUD - ${Date.now()}`,
         epico: 'Testes de Integração',
         status: 'Backlog',
         estimativa: 1,
-        developed: 'Sistema'
+        desenvolvedor: 'Sistema'
       };
 
       const createdTask = await service.createTask(testTask);
@@ -373,6 +479,75 @@ const IntegrationTests = ({ open, onClose }) => {
     return success ? 'success' : 'error';
   };
 
+  const copyAllErrors = async () => {
+    try {
+      // Gerar relatório completo dos testes
+      const timestamp = new Date().toLocaleString('pt-BR');
+      const failedTests = results.filter(result => !result.success);
+      const passedTests = results.filter(result => result.success);
+      
+      let report = `🧪 RELATÓRIO DE TESTES DE INTEGRAÇÃO SUPABASE - TaskTracker\n`;
+      report += `📅 Data/Hora: ${timestamp}\n`;
+      report += `📊 Resumo: ${passedTests.length}/${results.length} testes passaram\n`;
+      report += `🔗 URL Supabase: ${process.env.REACT_APP_SUPABASE_URL}\n`;
+      report += `👤 Usuário logado: ${auth?.isAuthenticated ? auth.user?.email : 'Não logado'}\n`;
+      report += `\n${'='.repeat(60)}\n\n`;
+
+      if (failedTests.length > 0) {
+        report += `❌ TESTES QUE FALHARAM (${failedTests.length}):\n\n`;
+        
+        failedTests.forEach((test, index) => {
+          report += `${index + 1}. ${test.name}\n`;
+          report += `   📝 Descrição: ${test.description}\n`;
+          report += `   ⚠️ Erro: ${test.message}\n`;
+          if (test.error) {
+            report += `   📋 Stack trace: ${test.error}\n`;
+          }
+          report += `   ⏰ Timestamp: ${test.timestamp}\n\n`;
+        });
+      }
+
+      if (passedTests.length > 0) {
+        report += `✅ TESTES QUE PASSARAM (${passedTests.length}):\n\n`;
+        
+        passedTests.forEach((test, index) => {
+          report += `${index + 1}. ${test.name} - ${test.message.split('\n')[0]}\n`;
+        });
+        report += `\n`;
+      }
+
+      report += `${'='.repeat(60)}\n`;
+      report += `💡 PRÓXIMOS PASSOS:\n`;
+      
+      if (failedTests.some(t => t.id === 'config')) {
+        report += `• Configure as credenciais do Supabase no .env.local\n`;
+      }
+      if (failedTests.some(t => t.id === 'tables')) {
+        report += `• Execute o script SQL no Supabase Dashboard (SQL Editor)\n`;
+      }
+      if (failedTests.some(t => t.id === 'auth')) {
+        report += `• Faça login usando os botões 📝 (cadastro) ou 🔐 (login)\n`;
+      }
+      if (failedTests.some(t => t.id === 'database' || t.id === 'rooms' || t.id === 'tasks')) {
+        report += `• Verifique se as tabelas foram criadas e o RLS está ativo\n`;
+      }
+
+      report += `\n📞 SUPORTE: Compartilhe este relatório para obter ajuda técnica\n`;
+
+      // Copiar para clipboard
+      await navigator.clipboard.writeText(report);
+      setCopySuccess(true);
+      
+      // Reset do feedback após 3 segundos
+      setTimeout(() => setCopySuccess(false), 3000);
+      
+    } catch (error) {
+      console.error('Erro ao copiar relatório:', error);
+      // Fallback para navegadores sem suporte ao clipboard
+      alert('Erro ao copiar. Abra o console (F12) para ver o relatório completo.');
+    }
+  };
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -386,18 +561,38 @@ const IntegrationTests = ({ open, onClose }) => {
             Estes testes verificam se a integração com Supabase está funcionando corretamente.
             Certifique-se de estar logado antes de executar os testes.
           </Typography>
+          {results.length > 0 && (
+            <Typography variant="body2" sx={{ mt: 1, fontWeight: 'bold' }}>
+              💡 Use o botão "Copiar Relatório Completo" para compartilhar os resultados dos testes.
+            </Typography>
+          )}
         </Alert>
 
-        <Box sx={{ mb: 2 }}>
+        <Box sx={{ mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
           <Button
             variant="contained"
             onClick={runTests}
             disabled={running}
             startIcon={running ? <CircularProgress size={20} /> : <PlayIcon />}
-            sx={{ mb: 2 }}
           >
             {running ? 'Executando Testes...' : 'Executar Todos os Testes'}
           </Button>
+          
+          {results.length > 0 && (
+            <Button
+              variant="outlined"
+              onClick={copyAllErrors}
+              disabled={running}
+              startIcon={<CopyIcon />}
+              color={copySuccess ? 'success' : 'primary'}
+              sx={{ 
+                minWidth: 200,
+                transition: 'all 0.3s ease'
+              }}
+            >
+              {copySuccess ? '✅ Relatório Copiado!' : '📋 Copiar Relatório Completo'}
+            </Button>
+          )}
         </Box>
 
         {results.length > 0 && (
