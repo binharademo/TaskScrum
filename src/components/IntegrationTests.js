@@ -580,11 +580,46 @@ const IntegrationTests = ({ open, onClose }) => {
       await service.initialize();
       console.log('✅ createTestRoom - Serviço inicializado');
 
-      const timestamp = Date.now();
+      // CRIAR SALA PADRÃO SEMPRE COM MESMO CÓDIGO
+      const defaultRoomCode = 'DEFAULT_ROOM';
+      
+      // Verificar se a sala padrão já existe
+      console.log('🔍 createTestRoom - Verificando se sala padrão já existe...');
+      let existingRoom = await service.findRoomByCode(defaultRoomCode);
+      
+      if (existingRoom) {
+        console.log('✅ createTestRoom - Sala padrão já existe:', existingRoom.id);
+        
+        // Salvar dados da sala existente
+        window.testRoomData = {
+          id: existingRoom.id,
+          code: existingRoom.room_code,
+          name: existingRoom.name
+        };
+
+        // Configurar como sala atual
+        const { setCurrentRoom } = await import('../utils/storage');
+        setCurrentRoom(existingRoom.room_code);
+        
+        return { 
+          success: true, 
+          message: `✅ Sala padrão já existe e foi configurada!\n` +
+                   `🏠 Nome: ${existingRoom.name}\n` +
+                   `📋 Código: ${existingRoom.room_code}\n` +
+                   `🆔 ID: ${existingRoom.id}\n` +
+                   `👤 Proprietário: ${auth.user?.email}\n\n` +
+                   `✨ SALA PADRÃO SEMPRE DISPONÍVEL!\n` +
+                   `• Esta sala nunca será excluída\n` +
+                   `• Você pode usar para todos os testes\n` +
+                   `• Configurada automaticamente como sala atual\n\n` +
+                   `💡 Continue para criar tarefas de exemplo nesta sala`
+        };
+      }
+
       const testRoomData = {
-        name: `Sala de Teste Completa - ${timestamp}`,
-        room_code: `TEST_${timestamp}`,
-        description: `Sala criada automaticamente para testes de integração em ${new Date().toLocaleString('pt-BR')}`,
+        name: `🏠 Sala Padrão do Usuário`,
+        room_code: defaultRoomCode,
+        description: `Sala padrão criada automaticamente para ${auth.user?.email}. Esta sala é permanente e não deve ser excluída.`,
         is_public: false
       };
 
@@ -609,22 +644,32 @@ const IntegrationTests = ({ open, onClose }) => {
 
       console.log('✅ createTestRoom - Verificação OK:', foundRoom.id);
 
-      // Salvar dados para próximos testes
+      // Salvar dados para próximos testes E para acesso na interface
       window.testRoomData = {
         id: room.id,
         code: room.room_code,
         name: room.name
       };
 
+      // IMPORTANTE: Salvar no localStorage para que o usuário possa acessar na interface
+      const { setCurrentRoom } = await import('../utils/storage');
+      setCurrentRoom(room.room_code);
+      console.log('💾 createTestRoom - Sala salva no localStorage para acesso direto');
+
       return { 
         success: true, 
-        message: `✅ Sala de teste criada e verificada!\n` +
+        message: `✅ Sala padrão criada e configurada!\n` +
                  `🏠 Nome: ${room.name}\n` +
                  `📋 Código: ${room.room_code}\n` +
                  `🆔 ID: ${room.id}\n` +
                  `👤 Proprietário: ${auth.user?.email}\n` +
                  `⏰ Criada em: ${new Date().toLocaleString('pt-BR')}\n\n` +
-                 `💡 Dados salvos em window.testRoomData para próximos testes`
+                 `🔒 SALA PADRÃO PERMANENTE!\n` +
+                 `• Esta é sua sala padrão pessoal\n` +
+                 `• Não será excluída nos testes de limpeza\n` +
+                 `• Sempre acessível na interface\n` +
+                 `• Configurada automaticamente como sala atual\n\n` +
+                 `💡 Continue executando os próximos testes para criar tarefas de exemplo`
       };
 
     } catch (error) {
@@ -708,6 +753,39 @@ const IntegrationTests = ({ open, onClose }) => {
           taxaErro: 33.33,
           tempoGastoValidado: true,
           motivoErro: 'Configuração inicial mais complexa que esperado'
+        },
+        {
+          atividade: 'Desenvolver API de usuários',
+          epico: 'Backend',
+          userStory: 'Como frontend, preciso de endpoints para gerenciar usuários',
+          status: 'Priorizado',
+          prioridade: 'Alta',
+          estimativa: 6,
+          desenvolvedor: 'Ana Oliveira',
+          sprint: 'Sprint 1',
+          detalhamento: 'CRUD completo de usuários com autenticação JWT'
+        },
+        {
+          atividade: 'Implementar drag and drop no Kanban',
+          epico: 'Interface',
+          userStory: 'Como usuário, quero arrastar tarefas entre colunas',
+          status: 'Backlog',
+          prioridade: 'Média',
+          estimativa: 4,
+          desenvolvedor: 'Carlos Lima',
+          sprint: 'Sprint 2',
+          detalhamento: 'Usar react-beautiful-dnd para interface intuitiva'
+        },
+        {
+          atividade: 'Criar sistema de notificações',
+          epico: 'Comunicação',
+          userStory: 'Como usuário, quero ser notificado sobre mudanças importantes',
+          status: 'Backlog',
+          prioridade: 'Baixa',
+          estimativa: 7,
+          desenvolvedor: 'João Silva',
+          sprint: 'Sprint 3',
+          detalhamento: 'Notificações em tempo real via WebSocket'
         }
       ];
 
@@ -761,7 +839,15 @@ const IntegrationTests = ({ open, onClose }) => {
                    `   👤 Dev: ${t.desenvolvedor}`
                  ).join('\n\n') +
                  `\n\n🏠 Sala: ${window.testRoomData.name}\n` +
-                 `💡 Dados salvos em window.testTasksData para próximos testes`
+                 `📋 Código da sala: ${window.testRoomData.code}\n\n` +
+                 `🎯 AGORA TESTE NA INTERFACE:\n` +
+                 `1. Feche este modal\n` +
+                 `2. Vá para a tela principal do TaskTracker\n` +
+                 `3. Use o código: ${window.testRoomData.code}\n` +
+                 `4. Arraste tarefas entre colunas\n` +
+                 `5. Crie novas tarefas\n` +
+                 `6. Edite tarefas existentes\n\n` +
+                 `💡 Execute depois o SQL para verificar se os dados foram salvos`
       };
 
     } catch (error) {
@@ -915,70 +1001,51 @@ const IntegrationTests = ({ open, onClose }) => {
       const results = [];
       let errors = [];
 
-      // 1. Limpar tarefas de teste se existirem
-      if (window.testTasksData && window.testTasksData.length > 0) {
-        console.log(`🗑️ cleanupTestData - Removendo ${window.testTasksData.length} tarefas...`);
-        
-        service.setCurrentRoom(window.testRoomData.id);
-        
-        for (const task of window.testTasksData) {
-          try {
-            await service.deleteTask(task.id);
-            console.log(`✅ cleanupTestData - Tarefa removida: ${task.id}`);
-          } catch (error) {
-            console.error(`❌ cleanupTestData - Erro ao remover tarefa ${task.id}:`, error);
-            errors.push(`Tarefa ${task.atividade}: ${error.message}`);
-          }
-        }
-        
-        results.push(`🗑️ ${window.testTasksData.length} tarefas de teste processadas`);
-        delete window.testTasksData;
-      }
+      // ========================================
+      // IMPORTANTE: NÃO REMOVER SALA E TAREFAS
+      // O usuário quer manter os dados para testar na interface
+      // ========================================
 
-      // 2. Limpar sala de teste se existir
-      if (window.testRoomData) {
-        console.log(`🏠 cleanupTestData - Removendo sala: ${window.testRoomData.name}`);
-        
-        try {
-          await service.deleteRoom(window.testRoomData.id);
-          results.push(`🏠 Sala de teste removida: ${window.testRoomData.name}`);
-          console.log(`✅ cleanupTestData - Sala removida: ${window.testRoomData.id}`);
-          delete window.testRoomData;
-        } catch (error) {
-          console.error(`❌ cleanupTestData - Erro ao remover sala:`, error);
-          errors.push(`Sala ${window.testRoomData.name}: ${error.message}`);
-        }
-      }
+      console.log('⚠️ cleanupTestData - LIMPEZA DESABILITADA');
+      console.log('💡 cleanupTestData - Dados mantidos para inspeção na interface');
 
-      // 3. Remover variáveis globais
+      // Limpar apenas variáveis globais temporárias
       if (window.testUserData) {
         delete window.testUserData;
-        results.push(`🧹 Dados de usuário de teste limpos`);
+        results.push(`🧹 Dados de usuário de teste limpos (somente variáveis)`);
       }
 
-      if (results.length === 0) {
-        return { 
-          success: true, 
-          message: '✨ Nenhum dado de teste encontrado para limpeza - sistema já está limpo!' 
-        };
+      // Manter dados de sala padrão e tarefas para inspeção
+      if (window.testRoomData) {
+        const isDefaultRoom = window.testRoomData.code === 'DEFAULT_ROOM';
+        if (isDefaultRoom) {
+          results.push(`🔒 Sala padrão PRESERVADA (nunca será excluída): ${window.testRoomData.name}`);
+        } else {
+          results.push(`🏠 Sala de teste MANTIDA para inspeção: ${window.testRoomData.name} (${window.testRoomData.code})`);
+        }
       }
 
-      if (errors.length > 0) {
-        return { 
-          success: false, 
-          message: `⚠️ Limpeza parcial concluída:\n\n` +
-                   `✅ SUCESSOS:\n${results.join('\n')}\n\n` +
-                   `❌ ERROS:\n${errors.join('\n')}\n\n` +
-                   `💡 Alguns dados podem precisar ser removidos manualmente no painel do Supabase`
-        };
+      if (window.testTasksData && window.testTasksData.length > 0) {
+        results.push(`📝 ${window.testTasksData.length} tarefas de teste MANTIDAS para inspeção`);
       }
 
       return { 
         success: true, 
-        message: `✅ Limpeza de dados de teste concluída com sucesso!\n\n` +
-                 `🧹 AÇÕES REALIZADAS:\n${results.join('\n')}\n\n` +
-                 `✨ Sistema restaurado ao estado inicial\n` +
-                 `⏰ Limpeza executada em: ${new Date().toLocaleString('pt-BR')}`
+        message: `✅ Dados de teste mantidos para inspeção na interface!\n\n` +
+                 `🎯 DADOS DISPONÍVEIS PARA TESTE:\n${results.join('\n')}\n\n` +
+                 `📋 COMO TESTAR NA INTERFACE:\n` +
+                 `1. Vá para a tela principal do TaskTracker\n` +
+                 `2. Use o código da sala: ${window.testRoomData?.code || 'TEST_[timestamp]'}\n` +
+                 `3. Interaja com as tarefas (drag & drop, editar, criar novas)\n` +
+                 `4. Verifique se as mudanças são salvas no Supabase\n\n` +
+                 `🗄️ VERIFICAÇÃO NO BANCO:\n` +
+                 `• Execute o SQL: docs/SUPABASE_VERIFICAR_TASKCONTEXT.sql\n` +
+                 `• Confirme se suas ações aparecem como dados recentes\n\n` +
+                 `⏰ Dados criados em: ${new Date().toLocaleString('pt-BR')}\n\n` +
+                 `💡 Para limpar apenas tarefas de teste (mantendo sala padrão):\n` +
+                 `DELETE FROM tasks WHERE room_id IN (SELECT id FROM rooms WHERE room_code = 'DEFAULT_ROOM');\n\n` +
+                 `⚠️ IMPORTANTE: A sala padrão (DEFAULT_ROOM) nunca deve ser excluída!\n` +
+                 `Esta é a sala permanente do usuário para testes e uso geral.`
       };
 
     } catch (error) {
@@ -987,11 +1054,7 @@ const IntegrationTests = ({ open, onClose }) => {
       
       return { 
         success: false, 
-        message: `Erro na limpeza de dados: ${error.message}\n\n` +
-                 `💡 Pode ser necessário limpar dados manualmente:\n` +
-                 `• Acesse o painel do Supabase\n` +
-                 `• Vá em Database > Table Editor\n` +
-                 `• Remover dados das tabelas tasks e rooms\n\n` +
+        message: `Erro ao processar limpeza: ${error.message}\n\n` +
                  `🔍 Stack trace no console`
       };
     }
