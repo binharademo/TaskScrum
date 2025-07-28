@@ -282,11 +282,22 @@ const RoomSelector = ({ open, onRoomSelected }) => {
         loadRooms();
       };
       
+      // Escutar evento de refresh forçado
+      const handleForceRefresh = (event) => {
+        console.log('🔄 RoomSelector - Evento forceRoomListRefresh recebido:', event.detail);
+        console.log('📋 RoomSelector - Forçando refresh da lista...');
+        setTimeout(() => {
+          loadRooms();
+        }, 500);
+      };
+      
       window.addEventListener('roomCreated', handleRoomCreated);
+      window.addEventListener('forceRoomListRefresh', handleForceRefresh);
       
       // Cleanup
       return () => {
         window.removeEventListener('roomCreated', handleRoomCreated);
+        window.removeEventListener('forceRoomListRefresh', handleForceRefresh);
       };
     }
   }, [open, isSupabaseMode]);

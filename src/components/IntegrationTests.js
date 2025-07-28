@@ -43,6 +43,11 @@ const IntegrationTests = ({ open, onClose }) => {
 
   const tests = [
     {
+      id: 'auth_sync',
+      name: '🔐 Sincronizar Autenticação',
+      description: 'Forçar sincronização entre TaskTracker e Supabase antes dos testes'
+    },
+    {
       id: 'config',
       name: '🔧 Verificar Configuração Supabase',
       description: 'Verifica se as credenciais estão configuradas corretamente'
@@ -94,14 +99,131 @@ const IntegrationTests = ({ open, onClose }) => {
     }
   ];
 
+  // =============================================
+  // FORÇAR AUTENTICAÇÃO E SINCRONIZAÇÃO
+  // =============================================
+  
+  const forceAuthenticationSync = async () => {
+    console.log('🔐 forceAuthenticationSync - Iniciando...');
+    
+    try {
+      // 1. Verificar se usuário está autenticado no contexto
+      if (!auth?.isAuthenticated || !auth?.user?.email) {
+        console.log('❌ forceAuthenticationSync - Usuário não autenticado no contexto');
+        return {
+          success: false,
+          message: '❌ Usuário não está logado no TaskTracker.\n\n' +
+                  '🔑 SOLUÇÃO:\n' +
+                  '1. Faça login primeiro\n' +
+                  '2. Execute os testes novamente\n\n' +
+                  '⚠️ Os testes precisam de um usuário autenticado para funcionar'
+        };
+      }
+      
+      console.log('✅ forceAuthenticationSync - Usuário autenticado:', auth.user.email);
+      
+      // 2. Criar nova instância do SupabaseService e forçar inicialização
+      console.log('🔧 forceAuthenticationSync - Criando SupabaseService...');
+      const service = new SupabaseService();
+      
+      // 3. Forçar inicialização completa
+      console.log('⚡ forceAuthenticationSync - Forçando inicialização...');
+      await service.initialize();
+      console.log('✅ forceAuthenticationSync - Serviço inicializado');
+      
+      // 4. Teste de conectividade básica
+      console.log('🌐 forceAuthenticationSync - Testando conectividade...');
+      const healthCheck = await service.healthCheck();
+      console.log('📊 forceAuthenticationSync - Health check:', healthCheck);
+      
+      if (healthCheck.status !== 'healthy') {
+        return {
+          success: false,
+          message: '❌ Falha na conectividade com Supabase.\n\n' +
+                  `📊 Status: ${healthCheck.status}\n` +
+                  `🔍 Erro: ${healthCheck.error || 'N/A'}\n\n` +
+                  '🔧 VERIFIQUE:\n' +
+                  '• Credenciais do Supabase\n' +
+                  '• Conexão com internet\n' +
+                  '• Projeto Supabase ativo'
+        };
+      }
+      
+      // 5. Verificar autenticação real no Supabase
+      console.log('🔑 forceAuthenticationSync - Verificando auth no Supabase...');
+      try {
+        const userRooms = await service.getUserRooms();
+        console.log('✅ forceAuthenticationSync - Auth OK, salas encontradas:', userRooms.length);
+        
+        return {
+          success: true,
+          message: `✅ Autenticação sincronizada com sucesso!\n\n` +
+                  `👤 Usuário: ${auth.user.email}\n` +
+                  `🏠 Salas acessíveis: ${userRooms.length}\n` +
+                  `🔗 Conexão: ${healthCheck.status}\n` +
+                  `⏰ Timestamp: ${new Date().toLocaleString('pt-BR')}\n\n` +
+                  `🚀 Sistema pronto para executar testes!`
+        };
+      } catch (authError) {
+        console.error('❌ forceAuthenticationSync - Erro de auth:', authError);
+        return {
+          success: false,
+          message: '❌ Falha na autenticação do Supabase.\n\n' +
+                  `🔍 Erro: ${authError.message}\n\n` +
+                  '🔧 SOLUÇÕES:\n' +
+                  '1. Faça logout e login novamente\n' +
+                  '2. Limpe o cache do navegador\n' +
+                  '3. Verifique se o projeto Supabase está ativo\n\n' +
+                  '💡 Este erro indica dessincronização de sessão'
+        };
+      }
+      
+    } catch (error) {
+      console.error('💥 forceAuthenticationSync - Erro geral:', error);
+      return {
+        success: false,
+        message: `💥 Erro inesperado na sincronização: ${error.message}\n\n` +
+                `📋 Stack: ${error.stack?.substring(0, 200)}...\n\n` +
+                `🔧 Tente recarregar a página e fazer login novamente`
+      };
+    }
+  };
+
   const runTests = async () => {
     setRunning(true);
     const testResults = [];
+    
+    // =============================================
+    // PASSO 0: FORÇAR AUTENTICAÇÃO ANTES DOS TESTES
+    // =============================================
+    console.log('🔐 Executando sincronização de autenticação...');
+    const authSync = await forceAuthenticationSync();
+    
+    testResults.push({
+      id: 'auth_sync',
+      name: '🔐 Sincronizar Autenticação',
+      description: 'Forçar sincronização entre TaskTracker e Supabase',
+      ...authSync,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Se autenticação falhar, parar os testes
+    if (!authSync.success) {
+      console.log('❌ Autenticação falhou, parando testes');
+      setResults(testResults);
+      setRunning(false);
+      return;
+    }
+    
+    console.log('✅ Autenticação OK, continuando com testes...');
 
     for (const test of tests) {
       try {
         let result;
         switch (test.id) {
+          case 'auth_sync':
+            // Este teste já foi executado antes do loop
+            continue;
           case 'config':
             result = await testConfiguration();
             break;
@@ -667,6 +789,14 @@ const IntegrationTests = ({ open, onClose }) => {
           roomId: room.id
         } 
       }));
+      
+      // FORÇAR SINCRONIZAÇÃO com RoomSelector
+      setTimeout(() => {
+        console.log('🔄 createTestRoom - Forçando refresh tardio...');
+        window.dispatchEvent(new CustomEvent('forceRoomListRefresh', { 
+          detail: { source: 'integration_tests', timestamp: Date.now() }
+        }));
+      }, 1000);
 
       return { 
         success: true, 

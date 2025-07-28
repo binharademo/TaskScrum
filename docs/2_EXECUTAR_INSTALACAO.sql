@@ -1,14 +1,13 @@
 -- =============================================
--- TASKTRACKER SUPABASE SETUP COMPLETO - VERSÃO ATUALIZADA
--- INCLUI: Correções dos testes de integração (campos motivoErro, etc.)
--- Execute este script APÓS o script de limpeza se necessário
+-- TASKTRACKER SUPABASE SETUP COMPLETO
+-- EXECUTE ESTE SEGUNDO NO SUPABASE SQL EDITOR
 -- =============================================
 
 -- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- =============================================
--- 1. ROOMS TABLE (Salas de trabalho)
+-- 1. ROOMS TABLE
 -- =============================================
 CREATE TABLE rooms (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -22,7 +21,7 @@ CREATE TABLE rooms (
 );
 
 -- =============================================
--- 2. ROOM_ACCESS TABLE (Controle de acesso)
+-- 2. ROOM_ACCESS TABLE (SEM updated_at!)
 -- =============================================
 CREATE TABLE room_access (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -35,7 +34,7 @@ CREATE TABLE room_access (
 );
 
 -- =============================================
--- 3. TASKS TABLE (Tarefas principais)
+-- 3. TASKS TABLE (Todos os campos necessários)
 -- =============================================
 CREATE TABLE tasks (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -74,7 +73,7 @@ CREATE TABLE tasks (
 );
 
 -- =============================================
--- 4. USER_SETTINGS TABLE (Configurações por usuário)
+-- 4. USER_SETTINGS TABLE
 -- =============================================
 CREATE TABLE user_settings (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -90,8 +89,6 @@ CREATE TABLE user_settings (
 -- =============================================
 -- 5. TRIGGERS (Auto-update timestamps)
 -- =============================================
-
--- Function to update updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -100,7 +97,6 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Triggers for all tables
 CREATE TRIGGER update_rooms_updated_at BEFORE UPDATE ON rooms
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -127,31 +123,37 @@ CREATE TRIGGER generate_room_code_trigger BEFORE INSERT ON rooms
     FOR EACH ROW EXECUTE FUNCTION generate_room_code();
 
 -- =============================================
--- 7. AUTO-CREATE OWNER ACCESS
+-- 7. TRIGGER CRÍTICO: AUTO-CREATE OWNER ACCESS
 -- =============================================
-CREATE OR REPLACE FUNCTION auto_create_owner_access()
+CREATE OR REPLACE FUNCTION create_owner_access()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO room_access (room_id, user_id, role, granted_by)
-    VALUES (NEW.id, NEW.owner_id, 'owner', NEW.owner_id);
+    -- CRÍTICO: Inserir acesso automático para o proprietário da sala
+    INSERT INTO room_access (room_id, user_id, role, granted_by, created_at)
+    VALUES (
+        NEW.id,           -- room_id
+        NEW.owner_id,     -- user_id (proprietário)
+        'admin',          -- role (admin para o proprietário)
+        NEW.owner_id,     -- granted_by (concedido por si mesmo)
+        NOW()             -- created_at
+    );
     RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE TRIGGER auto_create_owner_access_trigger AFTER INSERT ON rooms
-    FOR EACH ROW EXECUTE FUNCTION auto_create_owner_access();
+CREATE TRIGGER trigger_create_owner_access
+    AFTER INSERT ON rooms
+    FOR EACH ROW
+    EXECUTE FUNCTION create_owner_access();
 
 -- =============================================
--- 8. ROW LEVEL SECURITY (RLS) - SIMPLIFICADO
+-- 8. ROW LEVEL SECURITY (Simplificado)
 -- =============================================
-
--- Enable RLS
 ALTER TABLE rooms ENABLE ROW LEVEL SECURITY;
 ALTER TABLE room_access ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
 
--- Policies simples para funcionar
 CREATE POLICY "Allow authenticated users" ON rooms FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow authenticated users" ON room_access FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow authenticated users" ON tasks FOR ALL USING (auth.role() = 'authenticated');
@@ -171,48 +173,7 @@ CREATE INDEX idx_tasks_sprint ON tasks(sprint);
 CREATE INDEX idx_user_settings_user_room ON user_settings(user_id, room_id);
 
 -- =============================================
--- FINALIZAÇÃO E VERIFICAÇÃO
+-- FINALIZAÇÃO
 -- =============================================
-
--- Verificar estrutura das tabelas criadas
-SELECT 'TaskTracker Supabase setup completed successfully - UPDATED VERSION!' as status;
-
--- Verificar se todas as colunas importantes existem
-SELECT 
-    'Verificação da tabela tasks' as check_type,
-    COUNT(*) as total_columns
-FROM information_schema.columns 
-WHERE table_name = 'tasks';
-
--- Listar colunas específicas importantes para verificação
-SELECT 
-    column_name,
-    data_type,
-    is_nullable
-FROM information_schema.columns 
-WHERE table_name = 'tasks' 
-AND column_name IN ('motivo_erro', 'tempo_gasto', 'taxa_erro', 'tempo_gasto_validado')
-ORDER BY column_name;
-
--- =============================================
--- PRÓXIMOS PASSOS
--- =============================================
-
--- ✅ INSTALAÇÃO COMPLETA!
--- 1. Todas as tabelas foram criadas com campos atualizados
--- 2. Triggers e RLS estão configurados
--- 3. Campo motivo_erro foi incluído (correção dos testes)
--- 
--- 🧪 PARA TESTAR:
--- 1. Acesse http://localhost:3000
--- 2. Faça login com os botões 📝 ou 🔐
--- 3. Clique no botão 🧪 para executar testes de integração
--- 4. Deve mostrar 10/10 testes passando
--- 
--- 🎯 CAMPOS ADICIONADOS NESTA VERSÃO:
--- • tempo_gasto: DECIMAL(5,2) - Tempo real gasto na tarefa
--- • taxa_erro: DECIMAL(5,2) - Percentual de erro da estimativa  
--- • tempo_gasto_validado: BOOLEAN - Flag se tempo foi validado
--- • motivo_erro: TEXT - Explicação obrigatória para erros > 20%
-
-SELECT 'Sistema pronto para uso! Execute os testes de integração para verificar.' as final_message;
+SELECT '🎉 INSTALAÇÃO COMPLETA!' as titulo;
+SELECT 'Execute agora: 3_EXECUTAR_VERIFICACAO.sql' as proximo_passo;
