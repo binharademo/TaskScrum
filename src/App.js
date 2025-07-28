@@ -33,7 +33,8 @@ import {
   Google as GoogleIcon,
   Save as SaveIcon,
   CloudUpload as MigrateIcon,
-  BugReport as TestIcon
+  BugReport as TestIcon,
+  ContentCopy as CopyIcon
 } from '@mui/icons-material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -501,6 +502,43 @@ function AppContent() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
+
+  const handleCopyRoomId = async () => {
+    if (!currentRoom) {
+      alert('Nenhuma sala selecionada para copiar!');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(currentRoom);
+      // Feedback visual temporário
+      const originalTitle = document.title;
+      document.title = `✅ ID da sala "${currentRoom}" copiado!`;
+      
+      setTimeout(() => {
+        document.title = originalTitle;
+      }, 2000);
+      
+      console.log(`📋 ID da sala copiado: ${currentRoom}`);
+    } catch (error) {
+      console.error('Erro ao copiar para área de transferência:', error);
+      
+      // Fallback para navegadores mais antigos
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = currentRoom;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        alert(`ID da sala copiado: ${currentRoom}\n\nCompartilhe este código com sua equipe!`);
+      } catch (fallbackError) {
+        console.error('Fallback de cópia também falhou:', fallbackError);
+        alert(`ID da sala: ${currentRoom}\n\nCopie manualmente este código para compartilhar!`);
+      }
+    }
+  };
   
   // Handlers para Google Sheets - versão simplificada
   const handleGoogleAuthSuccess = async (user, project) => {
@@ -731,6 +769,21 @@ function AppContent() {
               <Tooltip title="Trocar de sala">
                 <IconButton color="inherit" onClick={handleOpenRoomSelector}>
                   <GroupIcon />
+                </IconButton>
+              </Tooltip>
+            )}
+            
+            {!showGoogleAuth && currentRoom && (
+              <Tooltip title={`Copiar ID da sala: ${currentRoom}`}>
+                <IconButton 
+                  color="inherit" 
+                  onClick={handleCopyRoomId}
+                  sx={{ 
+                    bgcolor: 'rgba(25, 118, 210, 0.1)',
+                    '&:hover': { bgcolor: 'rgba(25, 118, 210, 0.2)' }
+                  }}
+                >
+                  <CopyIcon />
                 </IconButton>
               </Tooltip>
             )}

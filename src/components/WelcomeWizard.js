@@ -32,7 +32,15 @@ import {
   CheckCircle as CompleteIcon,
   CheckCircle,
   Lightbulb as TipIcon,
-  Star as FeatureIcon
+  Star as FeatureIcon,
+  Menu as MenuIcon,
+  ViewModule as ViewModuleIcon,
+  TableView as TableViewIcon,
+  Analytics as AnalyticsIcon,
+  Share as ShareIcon,
+  Settings as SettingsIcon,
+  GetApp as ExportIcon,
+  ContentCopy as CopyIcon
 } from '@mui/icons-material';
 
 // Hooks e utilitários
@@ -52,6 +60,7 @@ const WelcomeWizard = ({ open, onComplete }) => {
   const steps = [
     'Boas-vindas',
     'Funcionalidades', 
+    'Interface do Sistema',
     'Modos de Trabalho',
     'Configuração Final'
   ];
@@ -210,6 +219,140 @@ const WelcomeWizard = ({ open, onComplete }) => {
             onClick={() => setCurrentStep(2)}
             endIcon={<NextIcon />}
           >
+            Próximo: Interface do Sistema
+          </Button>
+        </Box>
+      </Box>
+    </Fade>
+  );
+
+  // =============================================
+  // STEP 3: INTERFACE DO SISTEMA
+  // =============================================
+  const InterfaceStep = () => (
+    <Fade in timeout={800}>
+      <Box sx={{ py: 3 }}>
+        <Typography variant="h4" textAlign="center" gutterBottom color="primary" fontWeight="bold">
+          🎛️ Interface do Sistema
+        </Typography>
+        
+        <Typography variant="h6" textAlign="center" color="text.secondary" sx={{ mb: 4 }}>
+          Conheça os menus e funcionalidades para navegar com facilidade
+        </Typography>
+
+        <Grid container spacing={3}>
+          {/* Menu Principal */}
+          <Grid item xs={12} md={6}>
+            <Zoom in timeout={600}>
+              <Card sx={{ height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)' } }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <MenuIcon sx={{ fontSize: 40, color: 'primary.main', mr: 2 }} />
+                    <Typography variant="h6" fontWeight="bold">
+                      Menu de Visualizações
+                    </Typography>
+                  </Box>
+                  
+                  <Box sx={{ mb: 3 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <ViewModuleIcon sx={{ fontSize: 20, color: 'success.main', mr: 1 }} />
+                      <Typography variant="body2" fontWeight="bold">Kanban:</Typography>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ ml: 3, mb: 2 }}>
+                      Visualização em quadros com colunas Backlog, Priorizado, Doing e Done. 
+                      Arraste tarefas entre colunas e organize por épicos.
+                    </Typography>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <TableViewIcon sx={{ fontSize: 20, color: 'info.main', mr: 1 }} />
+                      <Typography variant="body2" fontWeight="bold">Tabela:</Typography>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ ml: 3, mb: 2 }}>
+                      Visão detalhada em tabela com estimativas, reestimativas por dia, 
+                      burndown chart e análises completas.
+                    </Typography>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <AnalyticsIcon sx={{ fontSize: 20, color: 'warning.main', mr: 1 }} />
+                      <Typography variant="body2" fontWeight="bold">Análises:</Typography>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ ml: 3 }}>
+                      Abas com estatísticas, burndown charts e análises preditivas 
+                      baseadas no desempenho da equipe.
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Zoom>
+          </Grid>
+
+          {/* Funcionalidades do Cabeçalho */}
+          <Grid item xs={12} md={6}>
+            <Zoom in timeout={800}>
+              <Card sx={{ height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)' } }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <SettingsIcon sx={{ fontSize: 40, color: 'secondary.main', mr: 2 }} />
+                    <Typography variant="h6" fontWeight="bold">
+                      Funcionalidades do Cabeçalho
+                    </Typography>
+                  </Box>
+                  
+                  <Box sx={{ mb: 3 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <CopyIcon sx={{ fontSize: 20, color: 'primary.main', mr: 1 }} />
+                      <Typography variant="body2" fontWeight="bold">Copiar ID da Sala:</Typography>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ ml: 3, mb: 2 }}>
+                      Botão para copiar o código da sala atual e compartilhar 
+                      com sua equipe para acesso colaborativo.
+                    </Typography>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <ShareIcon sx={{ fontSize: 20, color: 'success.main', mr: 1 }} />
+                      <Typography variant="body2" fontWeight="bold">Seletor de Salas:</Typography>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ ml: 3, mb: 2 }}>
+                      Crie novas salas, entre em salas existentes ou 
+                      gerencie projetos diferentes em espaços separados.
+                    </Typography>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <ExportIcon sx={{ fontSize: 20, color: 'info.main', mr: 1 }} />
+                      <Typography variant="body2" fontWeight="bold">Exportar Dados:</Typography>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ ml: 3 }}>
+                      Exporte seus dados para Excel, CSV ou integre 
+                      com Google Sheets para relatórios externos.
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Zoom>
+          </Grid>
+        </Grid>
+
+        <Alert severity="info" sx={{ mt: 4, mb: 3 }}>
+          <Typography variant="body2">
+            <TipIcon sx={{ fontSize: 16, mr: 1, verticalAlign: 'middle' }} />
+            <strong>Dica:</strong> Use os filtros avançados em cada visualização para 
+            encontrar rapidamente tarefas por desenvolvedor, sprint, prioridade ou busca textual!
+          </Typography>
+        </Alert>
+
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
+          <Button
+            variant="outlined"
+            onClick={() => setCurrentStep(1)}
+            startIcon={<BackIcon />}
+          >
+            Voltar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => setCurrentStep(3)}
+            endIcon={<NextIcon />}
+          >
             Próximo: Modos de Trabalho
           </Button>
         </Box>
@@ -218,7 +361,7 @@ const WelcomeWizard = ({ open, onComplete }) => {
   );
 
   // =============================================
-  // STEP 3: MODOS DE TRABALHO
+  // STEP 4: MODOS DE TRABALHO
   // =============================================
   const WorkModesStep = () => (
     <Fade in timeout={800}>
@@ -328,14 +471,14 @@ const WelcomeWizard = ({ open, onComplete }) => {
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
           <Button
             variant="outlined"
-            onClick={() => setCurrentStep(1)}
+            onClick={() => setCurrentStep(2)}
             startIcon={<BackIcon />}
           >
             Voltar
           </Button>
           <Button
             variant="contained"
-            onClick={() => setCurrentStep(3)}
+            onClick={() => setCurrentStep(4)}
             endIcon={<NextIcon />}
           >
             Próximo: Configurar
@@ -346,7 +489,7 @@ const WelcomeWizard = ({ open, onComplete }) => {
   );
 
   // =============================================
-  // STEP 4: CONFIGURAÇÃO FINAL
+  // STEP 5: CONFIGURAÇÃO FINAL
   // =============================================
   const ConfigurationStep = () => (
     <Fade in timeout={800}>
@@ -490,7 +633,7 @@ const WelcomeWizard = ({ open, onComplete }) => {
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
           <Button
             variant="outlined"
-            onClick={() => setCurrentStep(2)}
+            onClick={() => setCurrentStep(3)}
             startIcon={<BackIcon />}
             disabled={loading}
           >
@@ -551,8 +694,9 @@ const WelcomeWizard = ({ open, onComplete }) => {
     switch (currentStep) {
       case 0: return <WelcomeStep />;
       case 1: return <FeaturesStep />;
-      case 2: return <WorkModesStep />;
-      case 3: return <ConfigurationStep />;
+      case 2: return <InterfaceStep />;
+      case 3: return <WorkModesStep />;
+      case 4: return <ConfigurationStep />;
       default: return <WelcomeStep />;
     }
   };
