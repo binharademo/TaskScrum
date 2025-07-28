@@ -507,7 +507,7 @@ const IntegrationTests = ({ open, onClose }) => {
         process.env.REACT_APP_SUPABASE_ANON_KEY
       );
 
-      const testEmail = `teste_${Date.now()}@tasktracker.local`;
+      const testEmail = `teste_${Date.now()}@gmail.com`;
       const testPassword = 'TaskTracker123!';
 
       console.log('📧 createTestUser - Email de teste:', testEmail);

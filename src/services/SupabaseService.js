@@ -749,6 +749,30 @@ export class SupabaseService extends DataService {
       delete converted.updatedAt;
     }
 
+    // Convert motivoErro (camelCase) to motivo_erro (snake_case)
+    if (converted.motivoErro) {
+      converted.motivo_erro = converted.motivoErro;
+      delete converted.motivoErro;
+    }
+
+    // Convert tempoGasto (camelCase) to tempo_gasto (snake_case)
+    if (converted.tempoGasto !== undefined) {
+      converted.tempo_gasto = converted.tempoGasto;
+      delete converted.tempoGasto;
+    }
+
+    // Convert taxaErro (camelCase) to taxa_erro (snake_case)
+    if (converted.taxaErro !== undefined) {
+      converted.taxa_erro = converted.taxaErro;
+      delete converted.taxaErro;
+    }
+
+    // Convert tempoGastoValidado (camelCase) to tempo_gasto_validado (snake_case)
+    if (converted.tempoGastoValidado !== undefined) {
+      converted.tempo_gasto_validado = converted.tempoGastoValidado;
+      delete converted.tempoGastoValidado;
+    }
+
     return converted;
   }
 
@@ -770,6 +794,30 @@ export class SupabaseService extends DataService {
     if (converted.updated_at) {
       converted.updatedAt = converted.updated_at;
       delete converted.updated_at;
+    }
+
+    // Convert motivo_erro (snake_case) to motivoErro (camelCase)
+    if (converted.motivo_erro) {
+      converted.motivoErro = converted.motivo_erro;
+      delete converted.motivo_erro;
+    }
+
+    // Convert tempo_gasto (snake_case) to tempoGasto (camelCase)
+    if (converted.tempo_gasto !== undefined) {
+      converted.tempoGasto = converted.tempo_gasto;
+      delete converted.tempo_gasto;
+    }
+
+    // Convert taxa_erro (snake_case) to taxaErro (camelCase)
+    if (converted.taxa_erro !== undefined) {
+      converted.taxaErro = converted.taxa_erro;
+      delete converted.taxa_erro;
+    }
+
+    // Convert tempo_gasto_validado (snake_case) to tempoGastoValidado (camelCase)
+    if (converted.tempo_gasto_validado !== undefined) {
+      converted.tempoGastoValidado = converted.tempo_gasto_validado;
+      delete converted.tempo_gasto_validado;
     }
 
     // Ensure reestimativas is always an array
