@@ -50,9 +50,9 @@ import { isSupabaseConfigured } from '../config/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { SupabaseService } from '../services/SupabaseService';
 
-const RoomSelector = ({ open, onRoomSelected }) => {
+const RoomSelector = ({ open, onRoomSelected, initialRoomCode = '' }) => {
   const [newRoomCode, setNewRoomCode] = useState('');
-  const [joinRoomCode, setJoinRoomCode] = useState('');
+  const [joinRoomCode, setJoinRoomCode] = useState(initialRoomCode);
   const [error, setError] = useState('');
   const [availableRooms, setAvailableRooms] = useState([]);
   const [currentRoom, setCurrentRoomState] = useState('');
@@ -301,6 +301,14 @@ const RoomSelector = ({ open, onRoomSelected }) => {
       };
     }
   }, [open, isSupabaseMode]);
+
+  // Atualizar joinRoomCode quando initialRoomCode mudar
+  useEffect(() => {
+    if (initialRoomCode) {
+      console.log('🔗 RoomSelector - Código de sala inicial recebido:', initialRoomCode);
+      setJoinRoomCode(initialRoomCode);
+    }
+  }, [initialRoomCode]);
 
   const handleCreateRoom = async () => {
     console.log('🚀 handleCreateRoom - INÍCIO do processo de criação');

@@ -33,7 +33,8 @@ import {
   Google as GoogleIcon,
   Save as SaveIcon,
   CloudUpload as MigrateIcon,
-  BugReport as TestIcon
+  BugReport as TestIcon,
+  ContentCopy as CopyIcon
 } from '@mui/icons-material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -45,7 +46,9 @@ import PredictiveAnalysis from './components/PredictiveAnalysis';
 import GoogleSheetsSimple from './components/GoogleSheetsSimple';
 import ProjectSharing from './components/ProjectSharing';
 import DemoModeInfo from './components/DemoModeInfo';
+import WelcomeWizard from './components/WelcomeWizard';
 import { loadTasksFromStorage, saveTasksToStorage, getCurrentRoom, setCurrentRoom } from './utils/storage';
+import { isFirstAccess, markWizardCompleted, getWizardResult, resetWizard } from './utils/firstAccess';
 import RoomSelector from './components/RoomSelector';
 import MigrationWizard from './components/MigrationWizard';
 import IntegrationTests from './components/IntegrationTests';
@@ -112,12 +115,102 @@ function AppContent() {
   const [demoDescription, setDemoDescription] = useState(null);
   const [migrationWizardOpen, setMigrationWizardOpen] = useState(false);
   const [integrationTestsOpen, setIntegrationTestsOpen] = useState(false);
+  
+  // Estados para o wizard de primeiro acesso
+  const [showWelcomeWizard, setShowWelcomeWizard] = useState(false);
+  const [wizardResult, setWizardResult] = useState(null);
+
+  // Detectar primeiro acesso e mostrar wizard
+  useEffect(() => {
+    console.log('🔍 AppContent - Verificando primeiro acesso...');
+    
+    if (isFirstAccess()) {
+      console.log('🎉 AppContent - Primeiro acesso detectado, mostrando wizard');
+      setShowWelcomeWizard(true);
+    } else {
+      console.log('✅ AppContent - Usuário já conhece o sistema');
+      const result = getWizardResult();
+      if (result) {
+        console.log('📋 AppContent - Resultado do wizard anterior:', result);
+        setWizardResult(result);
+      }
+    }
+  }, []);
 
   // Sincronizar tasks do TaskContext com estado local
   useEffect(() => {
     console.log('🔄 AppContent - Sincronizando tasks do TaskContext:', contextTasks.length);
     setTasks(contextTasks);
   }, [contextTasks]);
+
+  // =============================================
+  // FUNÇÃO PARA TESTAR WIZARD (DEVELOPMENT)
+  // =============================================
+  const handleTestWizard = () => {
+    if (window.confirm('🧪 Resetar wizard para teste?\n\nIsso vai:\n• Limpar flag de wizard concluído\n• Abrir wizard na próxima vez\n• Útil para testar a experiência de primeiro acesso')) {
+      resetWizard();
+      console.log('🔄 Wizard resetado, recarregando página...');
+      window.location.reload();
+    }
+  };
+
+  // =============================================
+  // FUNÇÃO PARA FINALIZAR WIZARD DE PRIMEIRO ACESSO
+  // =============================================
+  const handleWizardComplete = async (result) => {
+    console.log('🎯 handleWizardComplete - Processando resultado do wizard:', result);
+    
+    try {
+      setWizardResult(result);
+      
+      // Processar baseado no modo escolhido
+      switch (result.mode) {
+        case 'local':
+          console.log('💻 handleWizardComplete - Modo local selecionado');
+          // Não precisa fazer nada especial, sistema já funciona local
+          break;
+          
+        case 'cloud':
+          console.log('☁️ handleWizardComplete - Modo nuvem selecionado');
+          // Mostrar modal de autenticação se Supabase estiver configurado
+          if (isSupabaseConfigured()) {
+            console.log('🔐 handleWizardComplete - Direcionando para autenticação');
+            if (!auth?.isAuthenticated) {
+              // Simular clique no botão de login se usuário não estiver autenticado
+              setTimeout(() => {
+                console.log('⚡ handleWizardComplete - Abrindo fluxo de login');
+                handleTestLogin();
+              }, 500);
+            } else {
+              console.log('✅ handleWizardComplete - Usuário já autenticado:', auth.user?.email);
+            }
+          } else {
+            console.warn('⚠️ handleWizardComplete - Supabase não configurado');
+            alert('⚠️ Modo nuvem não disponível. Supabase não está configurado.\n\nUsando modo local temporariamente.');
+          }
+          break;
+          
+        case 'shared':
+          console.log('🔗 handleWizardComplete - Modo sala compartilhada selecionado');
+          console.log('   └─ Código da sala:', result.roomCode);
+          // Abrir seletor de salas com o código pré-preenchido
+          setWizardResult(result); // Salvar o resultado para passar o código
+          setRoomSelectorOpen(true);
+          break;
+          
+        default:
+          console.warn('⚠️ handleWizardComplete - Modo desconhecido:', result.mode);
+      }
+      
+      // Fechar wizard
+      setShowWelcomeWizard(false);
+      
+      console.log('✅ handleWizardComplete - Wizard finalizado com sucesso');
+      
+    } catch (error) {
+      console.error('❌ handleWizardComplete - Erro ao processar resultado:', error);
+    }
+  };
 
   // Função para calcular violações WIP globalmente
   const calculateWIPViolations = () => {
@@ -409,6 +502,43 @@ function AppContent() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
+
+  const handleCopyRoomId = async () => {
+    if (!currentRoom) {
+      alert('Nenhuma sala selecionada para copiar!');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(currentRoom);
+      // Feedback visual temporário
+      const originalTitle = document.title;
+      document.title = `✅ ID da sala "${currentRoom}" copiado!`;
+      
+      setTimeout(() => {
+        document.title = originalTitle;
+      }, 2000);
+      
+      console.log(`📋 ID da sala copiado: ${currentRoom}`);
+    } catch (error) {
+      console.error('Erro ao copiar para área de transferência:', error);
+      
+      // Fallback para navegadores mais antigos
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = currentRoom;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        alert(`ID da sala copiado: ${currentRoom}\n\nCompartilhe este código com sua equipe!`);
+      } catch (fallbackError) {
+        console.error('Fallback de cópia também falhou:', fallbackError);
+        alert(`ID da sala: ${currentRoom}\n\nCopie manualmente este código para compartilhar!`);
+      }
+    }
+  };
   
   // Handlers para Google Sheets - versão simplificada
   const handleGoogleAuthSuccess = async (user, project) => {
@@ -643,6 +773,21 @@ function AppContent() {
               </Tooltip>
             )}
             
+            {!showGoogleAuth && currentRoom && (
+              <Tooltip title={`Copiar ID da sala: ${currentRoom}`}>
+                <IconButton 
+                  color="inherit" 
+                  onClick={handleCopyRoomId}
+                  sx={{ 
+                    bgcolor: 'rgba(25, 118, 210, 0.1)',
+                    '&:hover': { bgcolor: 'rgba(25, 118, 210, 0.2)' }
+                  }}
+                >
+                  <CopyIcon />
+                </IconButton>
+              </Tooltip>
+            )}
+            
             <Tooltip title={showGoogleAuth ? "Modo Local" : "Modo Google Sheets"}>
               <IconButton color="inherit" onClick={handleToggleGoogleSheets}>
                 <GoogleIcon />
@@ -711,6 +856,20 @@ function AppContent() {
                 </IconButton>
               </Tooltip>
             )}
+
+            {/* Botão para testar wizard (desenvolvimento) */}
+            <Tooltip title="🎯 Testar Wizard de Primeiro Acesso">
+              <IconButton 
+                color="inherit" 
+                onClick={handleTestWizard}
+                sx={{ 
+                  bgcolor: 'rgba(255, 152, 0, 0.1)',
+                  '&:hover': { bgcolor: 'rgba(255, 152, 0, 0.2)' }
+                }}
+              >
+                🎯
+              </IconButton>
+            </Tooltip>
 
             {/* Botão de testes de integração */}
             {isSupabaseConfigured() && (
@@ -966,6 +1125,7 @@ function AppContent() {
           <RoomSelector 
             open={roomSelectorOpen}
             onRoomSelected={handleRoomSelected}
+            initialRoomCode={wizardResult?.mode === 'shared' ? wizardResult.roomCode : ''}
           />
         )}
 
@@ -980,6 +1140,12 @@ function AppContent() {
         <IntegrationTests 
           open={integrationTestsOpen}
           onClose={() => setIntegrationTestsOpen(false)}
+        />
+
+        {/* Welcome Wizard - Primeiro Acesso */}
+        <WelcomeWizard 
+          open={showWelcomeWizard}
+          onComplete={handleWizardComplete}
         />
       </Box>
     </ThemeProvider>
