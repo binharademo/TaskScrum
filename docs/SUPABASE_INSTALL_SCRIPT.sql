@@ -1,6 +1,7 @@
 -- =============================================
--- TASKTRACKER SUPABASE SETUP COMPLETO - VERSÃO LIMPA
--- Execute este script APÓS o script de limpeza
+-- TASKTRACKER SUPABASE SETUP COMPLETO - VERSÃO ATUALIZADA
+-- INCLUI: Correções dos testes de integração (campos motivoErro, etc.)
+-- Execute este script APÓS o script de limpeza se necessário
 -- =============================================
 
 -- Enable required extensions
@@ -170,6 +171,48 @@ CREATE INDEX idx_tasks_sprint ON tasks(sprint);
 CREATE INDEX idx_user_settings_user_room ON user_settings(user_id, room_id);
 
 -- =============================================
--- FINALIZAÇÃO
+-- FINALIZAÇÃO E VERIFICAÇÃO
 -- =============================================
-SELECT 'TaskTracker Supabase setup completed successfully - Clean Installation!' as status;
+
+-- Verificar estrutura das tabelas criadas
+SELECT 'TaskTracker Supabase setup completed successfully - UPDATED VERSION!' as status;
+
+-- Verificar se todas as colunas importantes existem
+SELECT 
+    'Verificação da tabela tasks' as check_type,
+    COUNT(*) as total_columns
+FROM information_schema.columns 
+WHERE table_name = 'tasks';
+
+-- Listar colunas específicas importantes para verificação
+SELECT 
+    column_name,
+    data_type,
+    is_nullable
+FROM information_schema.columns 
+WHERE table_name = 'tasks' 
+AND column_name IN ('motivo_erro', 'tempo_gasto', 'taxa_erro', 'tempo_gasto_validado')
+ORDER BY column_name;
+
+-- =============================================
+-- PRÓXIMOS PASSOS
+-- =============================================
+
+-- ✅ INSTALAÇÃO COMPLETA!
+-- 1. Todas as tabelas foram criadas com campos atualizados
+-- 2. Triggers e RLS estão configurados
+-- 3. Campo motivo_erro foi incluído (correção dos testes)
+-- 
+-- 🧪 PARA TESTAR:
+-- 1. Acesse http://localhost:3000
+-- 2. Faça login com os botões 📝 ou 🔐
+-- 3. Clique no botão 🧪 para executar testes de integração
+-- 4. Deve mostrar 10/10 testes passando
+-- 
+-- 🎯 CAMPOS ADICIONADOS NESTA VERSÃO:
+-- • tempo_gasto: DECIMAL(5,2) - Tempo real gasto na tarefa
+-- • taxa_erro: DECIMAL(5,2) - Percentual de erro da estimativa  
+-- • tempo_gasto_validado: BOOLEAN - Flag se tempo foi validado
+-- • motivo_erro: TEXT - Explicação obrigatória para erros > 20%
+
+SELECT 'Sistema pronto para uso! Execute os testes de integração para verificar.' as final_message;
