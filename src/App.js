@@ -18,7 +18,8 @@ import {
 } from '@mui/material';
 import { 
   Dashboard as DashboardIcon, 
-  ShowChart as BurndownIcon,
+  TableChart as TableIcon,
+  Analytics as AnalyticsIcon,
   Speed as SpeedIcon,
   Psychology as PsychologyIcon,
   Upload as UploadIcon,
@@ -29,30 +30,34 @@ import {
   Group as GroupIcon,
   CloudSync as CloudSyncIcon,
   Share as ShareIcon,
-  Google as GoogleIcon
+  Google as GoogleIcon,
+  Save as SaveIcon,
+  CloudUpload as MigrateIcon,
+  BugReport as TestIcon
 } from '@mui/icons-material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-
-// Context Providers (Foundation)
-import { TaskProvider, useTaskContext } from './contexts/TaskContext';
-import { FilterProvider } from './contexts/FilterContext';
-import { UIProvider } from './contexts/UIContext';
-
-// Modular Components (New Architecture)
-import SimpleKanbanModular from './components/SimpleKanbanModular';
-import TableViewModular from './components/TableViewModular';
-import StatisticsPanel from './components/table/StatisticsPanel';
-import PredictiveAnalysisModular from './components/table/PredictiveAnalysisModular';
+import SimpleKanban from './components/SimpleKanban';
+import TableView from './components/TableView';
+import BurndownChart from './components/BurndownChart';
+import WIPControl from './components/WIPControl';
+import PredictiveAnalysis from './components/PredictiveAnalysis';
 import GoogleSheetsSimple from './components/GoogleSheetsSimple';
 import ProjectSharing from './components/ProjectSharing';
 import DemoModeInfo from './components/DemoModeInfo';
 import { loadTasksFromStorage, saveTasksToStorage, getCurrentRoom, setCurrentRoom } from './utils/storage';
 import RoomSelector from './components/RoomSelector';
+import MigrationWizard from './components/MigrationWizard';
+import IntegrationTests from './components/IntegrationTests';
 import { importExcelFile } from './utils/excelImport';
 import { loadSampleData } from './utils/sampleData';
 // Removido: simpleSheets - usando abordagem mais simples
 import { generateDemoData, getDemoDescription } from './services/demoData';
+
+// TaskContext integration (híbrido - não quebra interface atual)
+import { TaskProvider, useTaskContext } from './contexts/TaskContext';
+import { isSupabaseConfigured } from './config/supabase';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function TabPanel({ children, value, index, ...other }) {
   return (
@@ -72,13 +77,27 @@ function TabPanel({ children, value, index, ...other }) {
   );
 }
 
-// App Content Component (wrapped by Context Providers)
+// Componente interno que usa AuthContext e TaskContext
 function AppContent() {
-  // Context hooks
-  const { tasks, loadTasks, addTask, bulkUpdate } = useTaskContext();
+  // AuthContext para teste
+  const auth = isSupabaseConfigured() ? useAuth() : { isAuthenticated: false, user: null };
   
-  // Local state (não relacionado a tasks)
+  // TaskContext para persistência automática híbrida (localStorage + Supabase)
+  const { 
+    tasks: contextTasks, 
+    loadTasks: contextLoadTasks, 
+    addTask, 
+    updateTask, 
+    deleteTask, 
+    bulkUpdate, 
+    loading: contextLoading, 
+    error: contextError,
+    isSupabaseMode,
+    persistenceMode
+  } = useTaskContext();
+  
   const [currentTab, setCurrentTab] = useState(0);
+  const [tasks, setTasks] = useState(contextTasks);
   const [darkMode, setDarkMode] = useState(false);
   const [currentRoom, setCurrentRoomState] = useState('');
   const [roomSelectorOpen, setRoomSelectorOpen] = useState(false);
@@ -91,6 +110,14 @@ function AppContent() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [demoDescription, setDemoDescription] = useState(null);
+  const [migrationWizardOpen, setMigrationWizardOpen] = useState(false);
+  const [integrationTestsOpen, setIntegrationTestsOpen] = useState(false);
+
+  // Sincronizar tasks do TaskContext com estado local
+  useEffect(() => {
+    console.log('🔄 AppContent - Sincronizando tasks do TaskContext:', contextTasks.length);
+    setTasks(contextTasks);
+  }, [contextTasks]);
 
   // Função para calcular violações WIP globalmente
   const calculateWIPViolations = () => {
@@ -160,7 +187,7 @@ function AppContent() {
           ...task,
           reestimativas: task.reestimativas || Array.from({ length: 10 }, () => task.estimativa || 0)
         }));
-        loadTasks(migratedTasks);
+        setTasks(migratedTasks);
         saveTasksToStorage(migratedTasks);
       } else if (!wasCleared) {
         // Só carrega dados de exemplo se não foi zerado pelo usuário
@@ -171,7 +198,7 @@ function AppContent() {
             ...task,
             reestimativas: task.reestimativas || Array.from({ length: 10 }, () => task.estimativa || 0)
           }));
-          loadTasks(tasksWithReestimativas);
+          setTasks(tasksWithReestimativas);
           saveTasksToStorage(tasksWithReestimativas);
         }
       }
@@ -218,7 +245,7 @@ function AppContent() {
     // Monitorar sincronização
     const handleSyncComplete = (event) => {
       setSyncStatus('success');
-      loadTasks(event.detail.tasks);
+      setTasks(event.detail.tasks);
       setTimeout(() => setSyncStatus(null), 3000);
     };
     
@@ -242,14 +269,39 @@ function AppContent() {
     setCurrentTab(newValue);
   };
 
-  // Function to handle bulk task updates with localStorage sync
-  const handleTasksUpdate = (updatedTasks) => {
-    bulkUpdate(updatedTasks);
-    saveTasksToStorage(updatedTasks);
+  const handleTasksUpdate = async (updatedTasks) => {
+    console.log('🔄 handleTasksUpdate - INÍCIO:', updatedTasks.length, 'tarefas');
+    console.log('   └─ Modo de persistência:', persistenceMode);
     
-    // Se carregando novos dados, remover flag de "zerado"
-    if (updatedTasks.length > 0) {
-      localStorage.removeItem('tasksCleared');
+    try {
+      // Garantir que todas as tarefas tenham timestamps
+      const tasksWithTimestamps = updatedTasks.map(task => ({
+        ...task,
+        updatedAt: task.updatedAt || new Date().toISOString(),
+        createdAt: task.createdAt || new Date().toISOString(),
+        dataAtualizacao: new Date().toISOString()
+      }));
+      
+      console.log('💾 handleTasksUpdate - Salvando via TaskContext (persistência automática)');
+      
+      // Usar TaskContext para persistência automática (localStorage + Supabase se disponível)
+      await bulkUpdate(tasksWithTimestamps);
+      
+      // Atualizar estado local (sincronização acontece via useEffect)
+      setTasks(tasksWithTimestamps);
+      
+      console.log('✅ handleTasksUpdate - Persistência concluída com sucesso');
+      
+      // Se carregando novos dados, remover flag de "zerado"
+      if (tasksWithTimestamps.length > 0) {
+        localStorage.removeItem('tasksCleared');
+      }
+    } catch (error) {
+      console.error('❌ handleTasksUpdate - Erro na persistência:', error);
+      // Fallback para localStorage em caso de erro
+      console.log('🔄 handleTasksUpdate - Usando fallback localStorage');
+      setTasks(updatedTasks);
+      saveTasksToStorage(updatedTasks);
     }
   };
 
@@ -271,10 +323,24 @@ function AppContent() {
     localStorage.setItem('darkMode', JSON.stringify(newDarkMode));
   };
 
-  const handleClearTasks = () => {
+  const handleClearTasks = async () => {
     if (window.confirm('Tem certeza que deseja zerar todas as atividades? Esta ação não pode ser desfeita.')) {
-      loadTasks([]);
-      saveTasksToStorage([]);
+      console.log('🗑️ handleClearTasks - Zerando todas as tarefas');
+      console.log('   └─ Modo de persistência:', persistenceMode);
+      
+      try {
+        // Usar TaskContext para persistência automática
+        await bulkUpdate([]);
+        setTasks([]);
+        
+        console.log('✅ handleClearTasks - Tarefas zeradas com sucesso');
+      } catch (error) {
+        console.error('❌ handleClearTasks - Erro ao zerar:', error);
+        // Fallback para localStorage
+        setTasks([]);
+        saveTasksToStorage([]);
+      }
+      
       // Marcar que a base foi zerada para não recarregar dados de exemplo
       localStorage.setItem('tasksCleared', 'true');
       // Remover modo demo se estiver ativo na sala atual
@@ -300,7 +366,7 @@ function AppContent() {
       ...task,
       reestimativas: task.reestimativas || Array.from({ length: 10 }, () => task.estimativa || 0)
     }));
-    loadTasks(migratedTasks);
+    setTasks(migratedTasks);
     
     // Verificar se a nova sala tem modo demo específico
     const roomDemoMode = localStorage.getItem(`demoMode_${roomCode}`) === 'true';
@@ -405,6 +471,135 @@ function AppContent() {
     setDemoDescription(null);
   };
 
+  // Função para forçar salvamento das tarefas atuais no Supabase
+  const handleForceSaveToSupabase = async () => {
+    try {
+      console.log('💾 handleForceSaveToSupabase - INÍCIO');
+      console.log('   └─ Tarefas atuais:', tasks.length);
+      console.log('   └─ Modo Supabase ativo:', isSupabaseMode);
+      console.log('   └─ Modo de persistência:', persistenceMode);
+
+      if (!isSupabaseConfigured()) {
+        alert('❌ Supabase não configurado. Configure as credenciais no .env.local');
+        return;
+      }
+
+      if (!auth?.isAuthenticated) {
+        alert('❌ Usuário não autenticado. Faça login primeiro usando os botões 📝 ou 🔐');
+        return;
+      }
+
+      if (tasks.length === 0) {
+        alert('ℹ️ Nenhuma tarefa para salvar. Crie algumas tarefas no board primeiro.');
+        return;
+      }
+
+      console.log('💾 handleForceSaveToSupabase - Salvando todas as tarefas via TaskContext');
+      
+      // Forçar salvamento de todas as tarefas atuais
+      await handleTasksUpdate(tasks);
+
+      alert(`✅ ${tasks.length} tarefas salvas com sucesso!\n\n` +
+            `🔍 Verifique no Supabase Dashboard:\n` +
+            `• Tabela 'tasks' deve ter ${tasks.length} registros\n` +
+            `• Console do navegador mostra logs detalhados\n\n` +
+            `📍 Room: ${currentRoom || 'default'}\n` +
+            `👤 Usuário: ${auth.user?.email}`);
+
+    } catch (error) {
+      console.error('❌ handleForceSaveToSupabase - Erro:', error);
+      alert(`❌ Erro no salvamento: ${error.message}\n\n` +
+            `🔍 Verifique no console do navegador para mais detalhes`);
+    }
+  };
+
+  // Função de teste para cadastrar usuário
+  const handleTestSignUp = async () => {
+    if (!isSupabaseConfigured()) {
+      alert('❌ Supabase não configurado');
+      return;
+    }
+
+    try {
+      const email = prompt('📧 Email para cadastro:', 'teste@tasktracker.com');
+      if (!email) return;
+
+      const password = prompt('🔐 Senha (mín. 6 caracteres):', '123456');
+      if (!password) return;
+
+      if (password.length < 6) {
+        alert('❌ Senha deve ter pelo menos 6 caracteres');
+        return;
+      }
+
+      const result = await auth.signUp(email, password);
+      
+      if (result.success) {
+        if (result.needsConfirmation) {
+          alert(`✅ Usuário cadastrado! Verifique seu email para confirmar.\n📧 Email: ${email}`);
+        } else {
+          alert(`✅ Usuário cadastrado e logado automaticamente!\n👤 Email: ${email}\n🔄 Modo Supabase ativado`);
+        }
+      } else {
+        alert(`❌ Erro no cadastro: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Erro no cadastro:', error);
+      alert(`❌ Erro no cadastro: ${error.message}`);
+    }
+  };
+
+  // Função de teste para login rápido
+  const handleTestLogin = async () => {
+    if (!isSupabaseConfigured()) {
+      alert('❌ Supabase não configurado');
+      return;
+    }
+
+    try {
+      // Login com email/senha de teste
+      const email = prompt('📧 Email para login:', 'teste@tasktracker.com');
+      if (!email) return;
+
+      const password = prompt('🔐 Senha:', '123456');
+      if (!password) return;
+
+      const result = await auth.signIn(email, password);
+      
+      if (result.success) {
+        alert(`✅ Login realizado com sucesso!\n👤 Usuário: ${email}\n🔄 Modo Supabase ativado`);
+      } else {
+        alert(`❌ Erro no login: ${result.error}\n\n💡 Dica: Talvez precise cadastrar o usuário primeiro`);
+      }
+    } catch (error) {
+      console.error('Erro no login:', error);
+      alert(`❌ Erro no login: ${error.message}`);
+    }
+  };
+
+  // Função de teste para logout
+  const handleTestLogout = async () => {
+    try {
+      await auth.signOut();
+      alert('✅ Logout realizado com sucesso!\n🔄 Voltou para modo localStorage');
+    } catch (error) {
+      console.error('Erro no logout:', error);
+      alert(`❌ Erro no logout: ${error.message}`);
+    }
+  };
+
+  // Função para abrir wizard de migração
+  const handleOpenMigrationWizard = () => {
+    setMigrationWizardOpen(true);
+  };
+
+  // Função para finalizar migração
+  const handleMigrationComplete = (results) => {
+    console.log('Migração concluída:', results);
+    // Recarregar tarefas para mostrar dados migrados
+    window.location.reload();
+  };
+
   const theme = createTheme({
     palette: {
       mode: darkMode ? 'dark' : 'light',
@@ -453,6 +648,99 @@ function AppContent() {
                 <GoogleIcon />
               </IconButton>
             </Tooltip>
+
+            {/* Botões de autenticação para teste */}
+            {isSupabaseConfigured() && !auth?.isAuthenticated && (
+              <>
+                <Tooltip title="📝 Cadastrar Usuário">
+                  <IconButton 
+                    color="inherit" 
+                    onClick={handleTestSignUp}
+                    sx={{ 
+                      bgcolor: 'rgba(33, 150, 243, 0.1)',
+                      '&:hover': { bgcolor: 'rgba(33, 150, 243, 0.2)' }
+                    }}
+                  >
+                    📝
+                  </IconButton>
+                </Tooltip>
+                
+                <Tooltip title="🔐 Fazer Login">
+                  <IconButton 
+                    color="inherit" 
+                    onClick={handleTestLogin}
+                    sx={{ 
+                      bgcolor: 'rgba(255, 152, 0, 0.1)',
+                      '&:hover': { bgcolor: 'rgba(255, 152, 0, 0.2)' }
+                    }}
+                  >
+                    🔐
+                  </IconButton>
+                </Tooltip>
+              </>
+            )}
+
+            {/* Botão de logout quando autenticado */}
+            {isSupabaseConfigured() && auth?.isAuthenticated && (
+              <Tooltip title={`👤 ${auth.user?.email} (Logout)`}>
+                <IconButton 
+                  color="inherit" 
+                  onClick={handleTestLogout}
+                  sx={{ 
+                    bgcolor: 'rgba(76, 175, 80, 0.2)',
+                    '&:hover': { bgcolor: 'rgba(76, 175, 80, 0.3)' }
+                  }}
+                >
+                  👤
+                </IconButton>
+              </Tooltip>
+            )}
+
+            {/* Botão de migração para Supabase - só quando autenticado */}
+            {isSupabaseConfigured() && auth?.isAuthenticated && (
+              <Tooltip title="📦 Migrar dados localStorage → Supabase">
+                <IconButton 
+                  color="inherit" 
+                  onClick={handleOpenMigrationWizard}
+                  sx={{ 
+                    bgcolor: 'rgba(63, 81, 181, 0.1)',
+                    '&:hover': { bgcolor: 'rgba(63, 81, 181, 0.2)' }
+                  }}
+                >
+                  <MigrateIcon />
+                </IconButton>
+              </Tooltip>
+            )}
+
+            {/* Botão de testes de integração */}
+            {isSupabaseConfigured() && (
+              <Tooltip title="🧪 Executar Testes de Integração">
+                <IconButton 
+                  color="inherit" 
+                  onClick={() => setIntegrationTestsOpen(true)}
+                  sx={{ 
+                    bgcolor: 'rgba(156, 39, 176, 0.1)',
+                    '&:hover': { bgcolor: 'rgba(156, 39, 176, 0.2)' }
+                  }}
+                >
+                  <TestIcon />
+                </IconButton>
+              </Tooltip>
+            )}
+
+            {/* Botão de salvar tarefas no Supabase */}
+            <Tooltip title="💾 Salvar todas as tarefas no Supabase">
+              <IconButton 
+                color="inherit" 
+                onClick={handleForceSaveToSupabase}
+                sx={{ 
+                  bgcolor: 'rgba(76, 175, 80, 0.1)',
+                  '&:hover': { bgcolor: 'rgba(76, 175, 80, 0.2)' }
+                }}
+              >
+                <SaveIcon />
+              </IconButton>
+            </Tooltip>
             
             {user && (
               <>
@@ -463,7 +751,7 @@ function AppContent() {
                 </Tooltip>
                 
                 <Tooltip title="Compartilhar projeto">
-                  <IconButton color="inherit" onClick={() => setCurrentTab(4)}>
+                  <IconButton color="inherit" onClick={() => setCurrentTab(5)}>
                     <ShareIcon />
                   </IconButton>
                 </Tooltip>
@@ -613,7 +901,12 @@ function AppContent() {
                     iconPosition="start"
                   />
                   <Tab 
-                    icon={<BurndownIcon />} 
+                    icon={<TableIcon />} 
+                    label="Tabela" 
+                    iconPosition="start"
+                  />
+                  <Tab 
+                    icon={<AnalyticsIcon />} 
                     label="Burndown" 
                     iconPosition="start"
                   />
@@ -638,23 +931,27 @@ function AppContent() {
               </Box>
               
               <TabPanel value={currentTab} index={0}>
-                <SimpleKanbanModular />
+                <SimpleKanban tasks={tasks} onTasksUpdate={handleTasksUpdate} />
               </TabPanel>
               
               <TabPanel value={currentTab} index={1}>
-                <TableViewModular />
+                <TableView tasks={tasks} onTasksUpdate={handleTasksUpdate} />
               </TabPanel>
               
               <TabPanel value={currentTab} index={2}>
-                <StatisticsPanel />
+                <BurndownChart tasks={tasks} />
               </TabPanel>
               
               <TabPanel value={currentTab} index={3}>
-                <PredictiveAnalysisModular />
+                <WIPControl tasks={tasks} onTasksUpdate={handleTasksUpdate} />
+              </TabPanel>
+              
+              <TabPanel value={currentTab} index={4}>
+                <PredictiveAnalysis tasks={tasks} />
               </TabPanel>
               
               {user && (
-                <TabPanel value={currentTab} index={4}>
+                <TabPanel value={currentTab} index={5}>
                   <ProjectSharing 
                     projectInfo={projectInfo} 
                     onUpdate={setProjectInfo}
@@ -671,21 +968,32 @@ function AppContent() {
             onRoomSelected={handleRoomSelected}
           />
         )}
+
+        {/* Migration Wizard */}
+        <MigrationWizard 
+          open={migrationWizardOpen}
+          onClose={() => setMigrationWizardOpen(false)}
+          onComplete={handleMigrationComplete}
+        />
+
+        {/* Integration Tests */}
+        <IntegrationTests 
+          open={integrationTestsOpen}
+          onClose={() => setIntegrationTestsOpen(false)}
+        />
       </Box>
     </ThemeProvider>
   );
 }
 
-// Main App Component with Context Providers
+// Wrapper principal com AuthProvider + TaskProvider
 function App() {
   return (
-    <TaskProvider>
-      <FilterProvider>
-        <UIProvider>
-          <AppContent />
-        </UIProvider>
-      </FilterProvider>
-    </TaskProvider>
+    <AuthProvider>
+      <TaskProvider>
+        <AppContent />
+      </TaskProvider>
+    </AuthProvider>
   );
 }
 
