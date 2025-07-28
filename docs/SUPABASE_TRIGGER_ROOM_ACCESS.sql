@@ -11,14 +11,13 @@ CREATE OR REPLACE FUNCTION create_owner_access()
 RETURNS TRIGGER AS $$
 BEGIN
     -- Inserir acesso automático para o proprietário da sala
-    INSERT INTO room_access (room_id, user_id, role, granted_by, created_at, updated_at)
+    INSERT INTO room_access (room_id, user_id, role, granted_by, created_at)
     VALUES (
         NEW.id,           -- room_id
         NEW.owner_id,     -- user_id (proprietário)
         'admin',          -- role (admin para o proprietário)
         NEW.owner_id,     -- granted_by (concedido por si mesmo)
-        NOW(),            -- created_at
-        NOW()             -- updated_at
+        NOW()             -- created_at
     );
     
     RETURN NEW;

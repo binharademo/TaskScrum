@@ -165,7 +165,8 @@ export class SupabaseService extends DataService {
           room_id: data.id,
           user_id: user.id,
           role: 'admin',
-          granted_by: user.id
+          granted_by: user.id,
+          created_at: new Date().toISOString()
         }]);
 
       if (accessError) {

@@ -30,14 +30,13 @@ ORDER BY r.created_at DESC;
 -- =============================================
 
 -- Inserir acesso automático para proprietários de salas existentes
-INSERT INTO room_access (room_id, user_id, role, granted_by, created_at, updated_at)
+INSERT INTO room_access (room_id, user_id, role, granted_by, created_at)
 SELECT 
     r.id as room_id,
     r.owner_id as user_id,
     'admin' as role,
     r.owner_id as granted_by,
-    NOW() as created_at,
-    NOW() as updated_at
+    NOW() as created_at
 FROM rooms r
 LEFT JOIN room_access ra ON r.id = ra.room_id AND r.owner_id = ra.user_id
 WHERE ra.room_id IS NULL  -- Apenas salas sem acesso
