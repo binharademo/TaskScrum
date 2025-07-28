@@ -14,12 +14,23 @@ import {
   ListItemText,
   Chip,
   Alert,
-  Divider
+  Divider,
+  FormControlLabel,
+  Switch,
+  Card,
+  CardContent,
+  LinearProgress
 } from '@mui/material';
 import {
   Add as AddIcon,
   Group as GroupIcon,
-  VpnKey as KeyIcon
+  VpnKey as KeyIcon,
+  Storage as StorageIcon,
+  Cloud as CloudIcon,
+  Info as InfoIcon,
+  Delete as DeleteIcon,
+  Close as CloseIcon,
+  ExitToApp as ExitIcon
 } from '@mui/icons-material';
 
 // Storage utils (localStorage - modo padrão)
@@ -50,9 +61,25 @@ const RoomSelector = ({ open, onRoomSelected }) => {
   // Supabase context (optional - só usa se configurado)
   const auth = isSupabaseConfigured() ? useAuth() : { isAuthenticated: false, user: null };
   
-  // Determinar modo de operação
-  const isSupabaseMode = isSupabaseConfigured() && auth?.isAuthenticated;
+  // Estados para seleção de persistência
+  const [selectedPersistenceMode, setSelectedPersistenceMode] = useState(
+    isSupabaseConfigured() && auth?.isAuthenticated ? 'supabase' : 'localStorage'
+  );
+  const [showPersistenceInfo, setShowPersistenceInfo] = useState(false);
+  
+  // Determinar modo de operação baseado na seleção do usuário
+  const isSupabaseMode = selectedPersistenceMode === 'supabase' && 
+                         isSupabaseConfigured() && 
+                         auth?.isAuthenticated;
   const supabaseService = isSupabaseMode ? new SupabaseService() : null;
+  
+  console.log('🔧 RoomSelector - Configuração de persistência:');
+  console.log('   └─ Modo selecionado:', selectedPersistenceMode);
+  console.log('   └─ Supabase configurado:', isSupabaseConfigured());
+  console.log('   └─ Usuário autenticado:', auth?.isAuthenticated);
+  console.log('   └─ Email do usuário:', auth?.user?.email);
+  console.log('   └─ Switch desabilitado?', !isSupabaseConfigured() || !auth?.isAuthenticated);
+  console.log('   └─ Modo final (isSupabaseMode):', isSupabaseMode);
 
   // ========================================
   // SERVICE ABSTRACTION LAYER
@@ -97,32 +124,88 @@ const RoomSelector = ({ open, onRoomSelected }) => {
   };
 
   const createRoomHybrid = async (roomCode, initialTasks = []) => {
+    console.log('🏗️ createRoomHybrid - INICIANDO criação de sala');
+    console.log('   └─ Código da sala:', roomCode);
+    console.log('   └─ Modo selecionado pelo usuário:', selectedPersistenceMode);
+    console.log('   └─ Supabase configurado:', isSupabaseConfigured());
+    console.log('   └─ Usuário autenticado:', auth?.isAuthenticated);
+    console.log('   └─ Email do usuário:', auth?.user?.email);
+    console.log('   └─ Modo Supabase ativo (isSupabaseMode):', isSupabaseMode);
+    console.log('   └─ Tarefas iniciais:', initialTasks.length);
+    console.log('   └─ SupabaseService inicializado:', supabaseService ? 'SIM' : 'NÃO');
+    console.log('   └─ SupabaseService object:', supabaseService);
+
     if (isSupabaseMode && supabaseService) {
       try {
-        const room = await supabaseService.createRoom({
+        console.log('🔧 createRoomHybrid - INICIANDO inicialização do SupabaseService');
+        console.log('   └─ Verificando se SupabaseService existe:', !!supabaseService);
+        console.log('   └─ Método initialize existe:', typeof supabaseService.initialize);
+        
+        const initResult = await supabaseService.initialize();
+        console.log('✅ createRoomHybrid - SupabaseService inicializado:', initResult);
+
+        console.log('🏠 createRoomHybrid - CRIANDO sala no Supabase');
+        console.log('   └─ Dados da sala:', {
           name: `Sala ${roomCode}`,
           room_code: roomCode,
           is_public: false
         });
         
+        const room = await supabaseService.createRoom({
+          name: `Sala ${roomCode}`,
+          room_code: roomCode,
+          is_public: false
+        });
+        console.log('✅ createRoomHybrid - Sala criada com sucesso:', room);
+        
+        // Definir currentRoomId para poder criar tarefas
+        supabaseService.setCurrentRoom(room.id);
+        console.log('🎯 createRoomHybrid - Room ID definido:', room.id);
+        
         // Adicionar tarefas iniciais se fornecidas
         if (initialTasks.length > 0) {
+          console.log(`📝 createRoomHybrid - ADICIONANDO ${initialTasks.length} tarefas iniciais`);
           for (const task of initialTasks) {
-            await supabaseService.createTask({
+            const taskWithRoom = {
               ...task,
               room_id: room.id
-            });
+            };
+            console.log('   └─ Criando tarefa:', task.atividade);
+            try {
+              const createdTask = await supabaseService.createTask(taskWithRoom);
+              console.log('     ✅ Tarefa criada:', createdTask.id);
+            } catch (taskError) {
+              console.error('     ❌ Erro ao criar tarefa:', taskError.message);
+            }
           }
+          console.log('✅ createRoomHybrid - Processo de criação de tarefas concluído');
         }
         
+        console.log('🎉 createRoomHybrid - SALA CRIADA COM SUCESSO (modo Supabase)');
         return room;
       } catch (error) {
-        console.error('Error creating Supabase room:', error);
+        console.error('❌ createRoomHybrid - ERRO na criação Supabase:', error);
+        console.error('   └─ Error name:', error.name);
+        console.error('   └─ Error message:', error.message);
+        console.error('   └─ Error stack:', error.stack);
+        console.error('   └─ Error causa possível: Verificar se o Supabase está configurado corretamente');
+        console.error('   └─ Modo selecionado era:', selectedPersistenceMode);
+        console.error('   └─ Service era:', supabaseService);
+        console.error('   └─ Auth estava:', auth);
         throw error;
       }
     } else {
       // Modo localStorage padrão
+      console.log('💾 createRoomHybrid - CRIANDO sala no localStorage (modo local)');
+      console.log('   └─ Razão do modo local:');
+      console.log('     - isSupabaseMode:', isSupabaseMode);
+      console.log('     - selectedPersistenceMode:', selectedPersistenceMode);
+      console.log('     - isSupabaseConfigured():', isSupabaseConfigured());
+      console.log('     - auth?.isAuthenticated:', auth?.isAuthenticated);
+      console.log('     - supabaseService existe:', !!supabaseService);
+      
       createRoom(roomCode, initialTasks);
+      console.log('✅ createRoomHybrid - Sala criada com sucesso (modo localStorage)');
       return { room_code: roomCode };
     }
   };
@@ -175,32 +258,51 @@ const RoomSelector = ({ open, onRoomSelected }) => {
   }, [open, isSupabaseMode]);
 
   const handleCreateRoom = async () => {
+    console.log('🚀 handleCreateRoom - INÍCIO do processo de criação');
     setLoading(true);
     try {
       setError('');
       
       // Gerar código se não fornecido
       const roomCode = newRoomCode.trim().toUpperCase() || generateRoomCode();
+      console.log('📝 handleCreateRoom - Código da sala definido:', roomCode);
       
       // Verificar se já existe
-      if (await roomExistsHybrid(roomCode)) {
-        setError(`Sala "${roomCode}" já existe. Escolha outro código.`);
+      console.log('🔍 handleCreateRoom - VERIFICANDO se sala já existe');
+      const exists = await roomExistsHybrid(roomCode);
+      console.log('   └─ Sala existe?', exists);
+      
+      if (exists) {
+        const errorMsg = `Sala "${roomCode}" já existe. Escolha outro código.`;
+        console.log('❌ handleCreateRoom - ERRO:', errorMsg);
+        setError(errorMsg);
         return;
       }
 
       // Carregar dados de exemplo para nova sala
+      console.log('📊 handleCreateRoom - CARREGANDO dados de exemplo');
       const sampleTasks = await loadSampleData();
+      console.log('   └─ Dados carregados:', sampleTasks.length, 'tarefas');
       
       // Criar sala com dados de exemplo (usar função híbrida)
-      await createRoomHybrid(roomCode, sampleTasks);
+      console.log('🏗️ handleCreateRoom - CHAMANDO createRoomHybrid');
+      const createdRoom = await createRoomHybrid(roomCode, sampleTasks);
+      console.log('✅ handleCreateRoom - Sala criada com sucesso:', createdRoom);
       
       // Fechar modal e notificar
+      console.log('✨ handleCreateRoom - FINALIZANDO processo');
       onRoomSelected(roomCode);
       setNewRoomCode('');
+      console.log('🎉 handleCreateRoom - PROCESSO CONCLUÍDO COM SUCESSO');
       
     } catch (error) {
-      setError('Erro ao criar sala: ' + error.message);
+      const errorMsg = 'Erro ao criar sala: ' + error.message;
+      console.error('❌ handleCreateRoom - ERRO GERAL:', error);
+      console.error('   └─ Error message:', error.message);
+      console.error('   └─ Error stack:', error.stack);
+      setError(errorMsg);
     } finally {
+      console.log('🔄 handleCreateRoom - FINALIZANDO loading');
       setLoading(false);
     }
   };
@@ -237,11 +339,105 @@ const RoomSelector = ({ open, onRoomSelected }) => {
     onRoomSelected(roomCode);
   };
 
+  const handleDeleteRoom = async (roomCode, event) => {
+    // Prevenir propagação para não selecionar a sala
+    event.stopPropagation();
+    
+    console.log('🗑️ handleDeleteRoom - INÍCIO:', roomCode);
+    
+    if (!window.confirm(`Tem certeza que deseja remover a sala "${roomCode}"?\n\n⚠️ Esta ação irá:\n• Apagar todas as tarefas da sala\n• Remover a sala permanentemente\n• Não pode ser desfeita`)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (isSupabaseMode && supabaseService) {
+        console.log('☁️ handleDeleteRoom - Removendo do Supabase:', roomCode);
+        
+        // Inicializar service se necessário
+        await supabaseService.initialize();
+        
+        // Encontrar sala no Supabase
+        const room = await supabaseService.findRoomByCode(roomCode);
+        if (room) {
+          // Remover todas as tarefas da sala primeiro
+          const tasks = await supabaseService.getTasks(room.id);
+          for (const task of tasks) {
+            await supabaseService.deleteTask(task.id);
+          }
+          
+          // Remover a sala
+          await supabaseService.deleteRoom(room.id);
+          console.log('✅ handleDeleteRoom - Sala removida do Supabase');
+        }
+      }
+      
+      // Sempre remover do localStorage também
+      console.log('💾 handleDeleteRoom - Removendo do localStorage:', roomCode);
+      
+      // Usar a mesma chave que o storage.js usa (tasktracker_room_)
+      const storageKey = `tasktracker_room_${roomCode}`;
+      localStorage.removeItem(storageKey);
+      console.log('   └─ Removida chave:', storageKey);
+      
+      // Também remover chaves antigas se existirem (compatibilidade)
+      const oldStorageKey = `tasktracker_tasks_${roomCode}`;
+      localStorage.removeItem(oldStorageKey);
+      console.log('   └─ Removida chave antiga:', oldStorageKey);
+      
+      // Limpar dados da sala atual se for esta sala  
+      const currentRoomFromStorage = getCurrentRoom();
+      console.log('   └─ Sala atual no storage:', currentRoomFromStorage);
+      console.log('   └─ Sala sendo removida:', roomCode);
+      console.log('   └─ Sala atual no estado:', currentRoom);
+      
+      if (currentRoomFromStorage === roomCode) {
+        setCurrentRoom('');
+        console.log('   └─ Limpou sala atual no storage');
+      }
+      
+      if (currentRoom === roomCode) {
+        setCurrentRoomState('');
+        console.log('   └─ Limpou sala atual no estado');
+      }
+      
+      console.log('✅ handleDeleteRoom - Sala removida completamente');
+      
+      // Recarregar lista de salas
+      console.log('🔄 handleDeleteRoom - Recarregando lista de salas');
+      const rooms = await getAvailableRoomsHybrid();
+      console.log('   └─ Novas salas carregadas:', rooms.length);
+      setAvailableRooms(rooms);
+      
+    } catch (error) {
+      console.error('❌ handleDeleteRoom - Erro:', error);
+      setError('Erro ao remover sala: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Dialog open={open} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <GroupIcon />
-        Seleção de Sala/Projeto
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <GroupIcon />
+          Seleção de Sala/Projeto
+        </Box>
+        <Button
+          onClick={onRoomSelected ? () => onRoomSelected(null) : undefined}
+          startIcon={<ExitIcon />}
+          size="small"
+          color="inherit"
+          sx={{ 
+            textTransform: 'none',
+            '&:hover': {
+              backgroundColor: 'action.hover'
+            }
+          }}
+        >
+          Sair
+        </Button>
       </DialogTitle>
       
       <DialogContent>
@@ -269,14 +465,33 @@ const RoomSelector = ({ open, onRoomSelected }) => {
                   <ListItemButton 
                     onClick={() => handleSelectExistingRoom(room.code)}
                     selected={room.code === currentRoom}
+                    sx={{ pr: 1 }}
                   >
                     <ListItemText
                       primary={room.name}
                       secondary={`${room.taskCount} tarefas`}
                     />
                     {room.code === currentRoom && (
-                      <Chip label="Atual" size="small" color="primary" />
+                      <Chip label="Atual" size="small" color="primary" sx={{ mr: 1 }} />
                     )}
+                    <Button
+                      size="small"
+                      color="error"
+                      onClick={(e) => handleDeleteRoom(room.code, e)}
+                      sx={{ 
+                        minWidth: 'auto',
+                        width: 32,
+                        height: 32,
+                        p: 0,
+                        '&:hover': {
+                          backgroundColor: 'error.light',
+                          color: 'white'
+                        }
+                      }}
+                      title={`Remover sala ${room.code}`}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </Button>
                   </ListItemButton>
                 </ListItem>
               ))}
@@ -291,6 +506,75 @@ const RoomSelector = ({ open, onRoomSelected }) => {
             <AddIcon />
             Criar Nova Sala
           </Typography>
+          
+          {/* Seleção de Persistência */}
+          <Card sx={{ mb: 2, p: 2, backgroundColor: 'background.default' }}>
+            <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              💾 Escolha onde salvar os dados:
+              <Button 
+                size="small" 
+                onClick={() => setShowPersistenceInfo(!showPersistenceInfo)}
+                startIcon={<InfoIcon />}
+              >
+                {showPersistenceInfo ? 'Ocultar' : 'Saiba mais'}
+              </Button>
+            </Typography>
+            
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: showPersistenceInfo ? 2 : 0 }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={selectedPersistenceMode === 'supabase'}
+                    onChange={(e) => setSelectedPersistenceMode(e.target.checked ? 'supabase' : 'localStorage')}
+                    disabled={!isSupabaseConfigured() || !auth?.isAuthenticated}
+                  />
+                }
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {selectedPersistenceMode === 'supabase' ? <CloudIcon /> : <StorageIcon />}
+                    {selectedPersistenceMode === 'supabase' ? 'Nuvem (Supabase)' : 'Local (Navegador)'}
+                  </Box>
+                }
+              />
+              
+              {/* Indicador de status de autenticação */}
+              {!isSupabaseConfigured() && (
+                <Typography variant="caption" color="error" sx={{ ml: 4 }}>
+                  ⚠️ Supabase não configurado
+                </Typography>
+              )}
+              
+              {isSupabaseConfigured() && !auth?.isAuthenticated && (
+                <Typography variant="caption" color="warning.main" sx={{ ml: 4 }}>
+                  ⚠️ Faça login primeiro usando os botões 📝 ou 🔐 no cabeçalho
+                </Typography>
+              )}
+              
+              {isSupabaseConfigured() && auth?.isAuthenticated && (
+                <Typography variant="caption" color="success.main" sx={{ ml: 4 }}>
+                  ✅ Logado como: {auth.user?.email}
+                </Typography>
+              )}
+            </Box>
+            
+            {showPersistenceInfo && (
+              <Box sx={{ p: 2, bgcolor: 'info.light', borderRadius: 1 }}>
+                <Typography variant="body2" color="info.dark">
+                  <strong>💾 Local (Navegador):</strong><br />
+                  • Dados salvos apenas neste dispositivo<br />
+                  • Mais rápido, funciona offline<br />
+                  • Compartilhamento por código da sala apenas<br /><br />
+                  
+                  <strong>☁️ Nuvem (Supabase):</strong><br />
+                  • Dados sincronizados entre dispositivos<br />
+                  • Backup automático na nuvem<br />
+                  • Acesso controlado por usuário<br />
+                  • {!auth?.isAuthenticated && '⚠️ Requer login com Google'}
+                </Typography>
+              </Box>
+            )}
+          </Card>
+          
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
             <TextField
               label="Código da Sala (opcional)"
@@ -310,6 +594,18 @@ const RoomSelector = ({ open, onRoomSelected }) => {
               {loading ? 'Criando...' : 'Criar'}
             </Button>
           </Box>
+          
+          {loading && (
+            <Box sx={{ mt: 2 }}>
+              <LinearProgress />
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                {selectedPersistenceMode === 'supabase' ? 
+                  'Criando sala na nuvem...' : 
+                  'Criando sala localmente...'
+                }
+              </Typography>
+            </Box>
+          )}
         </Box>
 
         <Divider sx={{ my: 2 }} />
@@ -350,10 +646,18 @@ const RoomSelector = ({ open, onRoomSelected }) => {
         </Box>
       </DialogContent>
       
-      <DialogActions>
-        <Typography variant="caption" color="text.secondary" sx={{ mr: 'auto' }}>
+      <DialogActions sx={{ justifyContent: 'space-between' }}>
+        <Typography variant="caption" color="text.secondary">
           {isSupabaseMode ? 'Dados sincronizados com Supabase' : 'Os dados são compartilhados localmente'}
         </Typography>
+        <Button 
+          onClick={onRoomSelected ? () => onRoomSelected(null) : undefined}
+          startIcon={<CloseIcon />}
+          color="inherit"
+          sx={{ textTransform: 'none' }}
+        >
+          Fechar
+        </Button>
       </DialogActions>
     </Dialog>
   );

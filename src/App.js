@@ -77,13 +77,27 @@ function TabPanel({ children, value, index, ...other }) {
   );
 }
 
-// Componente interno que usa AuthContext
+// Componente interno que usa AuthContext e TaskContext
 function AppContent() {
   // AuthContext para teste
   const auth = isSupabaseConfigured() ? useAuth() : { isAuthenticated: false, user: null };
   
+  // TaskContext para persistência automática híbrida (localStorage + Supabase)
+  const { 
+    tasks: contextTasks, 
+    loadTasks: contextLoadTasks, 
+    addTask, 
+    updateTask, 
+    deleteTask, 
+    bulkUpdate, 
+    loading: contextLoading, 
+    error: contextError,
+    isSupabaseMode,
+    persistenceMode
+  } = useTaskContext();
+  
   const [currentTab, setCurrentTab] = useState(0);
-  const [tasks, setTasks] = useState([]);
+  const [tasks, setTasks] = useState(contextTasks);
   const [darkMode, setDarkMode] = useState(false);
   const [currentRoom, setCurrentRoomState] = useState('');
   const [roomSelectorOpen, setRoomSelectorOpen] = useState(false);
@@ -98,6 +112,12 @@ function AppContent() {
   const [demoDescription, setDemoDescription] = useState(null);
   const [migrationWizardOpen, setMigrationWizardOpen] = useState(false);
   const [integrationTestsOpen, setIntegrationTestsOpen] = useState(false);
+
+  // Sincronizar tasks do TaskContext com estado local
+  useEffect(() => {
+    console.log('🔄 AppContent - Sincronizando tasks do TaskContext:', contextTasks.length);
+    setTasks(contextTasks);
+  }, [contextTasks]);
 
   // Função para calcular violações WIP globalmente
   const calculateWIPViolations = () => {
@@ -249,21 +269,39 @@ function AppContent() {
     setCurrentTab(newValue);
   };
 
-  const handleTasksUpdate = (updatedTasks) => {
-    // Garantir que todas as tarefas tenham timestamps
-    const tasksWithTimestamps = updatedTasks.map(task => ({
-      ...task,
-      updatedAt: task.updatedAt || new Date().toISOString(),
-      createdAt: task.createdAt || new Date().toISOString(),
-      dataAtualizacao: new Date().toISOString()
-    }));
+  const handleTasksUpdate = async (updatedTasks) => {
+    console.log('🔄 handleTasksUpdate - INÍCIO:', updatedTasks.length, 'tarefas');
+    console.log('   └─ Modo de persistência:', persistenceMode);
     
-    setTasks(tasksWithTimestamps);
-    saveTasksToStorage(tasksWithTimestamps);
-    
-    // Se carregando novos dados, remover flag de "zerado"
-    if (tasksWithTimestamps.length > 0) {
-      localStorage.removeItem('tasksCleared');
+    try {
+      // Garantir que todas as tarefas tenham timestamps
+      const tasksWithTimestamps = updatedTasks.map(task => ({
+        ...task,
+        updatedAt: task.updatedAt || new Date().toISOString(),
+        createdAt: task.createdAt || new Date().toISOString(),
+        dataAtualizacao: new Date().toISOString()
+      }));
+      
+      console.log('💾 handleTasksUpdate - Salvando via TaskContext (persistência automática)');
+      
+      // Usar TaskContext para persistência automática (localStorage + Supabase se disponível)
+      await bulkUpdate(tasksWithTimestamps);
+      
+      // Atualizar estado local (sincronização acontece via useEffect)
+      setTasks(tasksWithTimestamps);
+      
+      console.log('✅ handleTasksUpdate - Persistência concluída com sucesso');
+      
+      // Se carregando novos dados, remover flag de "zerado"
+      if (tasksWithTimestamps.length > 0) {
+        localStorage.removeItem('tasksCleared');
+      }
+    } catch (error) {
+      console.error('❌ handleTasksUpdate - Erro na persistência:', error);
+      // Fallback para localStorage em caso de erro
+      console.log('🔄 handleTasksUpdate - Usando fallback localStorage');
+      setTasks(updatedTasks);
+      saveTasksToStorage(updatedTasks);
     }
   };
 
@@ -285,10 +323,24 @@ function AppContent() {
     localStorage.setItem('darkMode', JSON.stringify(newDarkMode));
   };
 
-  const handleClearTasks = () => {
+  const handleClearTasks = async () => {
     if (window.confirm('Tem certeza que deseja zerar todas as atividades? Esta ação não pode ser desfeita.')) {
-      setTasks([]);
-      saveTasksToStorage([]);
+      console.log('🗑️ handleClearTasks - Zerando todas as tarefas');
+      console.log('   └─ Modo de persistência:', persistenceMode);
+      
+      try {
+        // Usar TaskContext para persistência automática
+        await bulkUpdate([]);
+        setTasks([]);
+        
+        console.log('✅ handleClearTasks - Tarefas zeradas com sucesso');
+      } catch (error) {
+        console.error('❌ handleClearTasks - Erro ao zerar:', error);
+        // Fallback para localStorage
+        setTasks([]);
+        saveTasksToStorage([]);
+      }
+      
       // Marcar que a base foi zerada para não recarregar dados de exemplo
       localStorage.setItem('tasksCleared', 'true');
       // Remover modo demo se estiver ativo na sala atual
@@ -419,43 +471,45 @@ function AppContent() {
     setDemoDescription(null);
   };
 
-  // Função de teste para forçar salvamento no Supabase
-  const handleTestSupabaseSave = async () => {
+  // Função para forçar salvamento das tarefas atuais no Supabase
+  const handleForceSaveToSupabase = async () => {
     try {
+      console.log('💾 handleForceSaveToSupabase - INÍCIO');
+      console.log('   └─ Tarefas atuais:', tasks.length);
+      console.log('   └─ Modo Supabase ativo:', isSupabaseMode);
+      console.log('   └─ Modo de persistência:', persistenceMode);
+
       if (!isSupabaseConfigured()) {
         alert('❌ Supabase não configurado. Configure as credenciais no .env.local');
         return;
       }
 
-      // Criar uma tarefa de teste
-      const testTask = {
-        id: `test-${Date.now()}`,
-        atividade: `Teste Supabase - ${new Date().toLocaleTimeString()}`,
-        userStory: 'Testar se a persistência no Supabase está funcionando',
-        epico: 'Sistema de Testes',
-        desenvolvedor: 'Sistema',
-        sprint: currentRoom || 'default',
-        status: 'Backlog',
-        prioridade: 'Média',
-        estimativa: 1,
-        reestimativas: Array(10).fill(1),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
+      if (!auth?.isAuthenticated) {
+        alert('❌ Usuário não autenticado. Faça login primeiro usando os botões 📝 ou 🔐');
+        return;
+      }
 
-      // Adicionar à lista atual (isso vai triggerar a persistência automática)
-      const updatedTasks = [...tasks, testTask];
-      handleTasksUpdate(updatedTasks);
+      if (tasks.length === 0) {
+        alert('ℹ️ Nenhuma tarefa para salvar. Crie algumas tarefas no board primeiro.');
+        return;
+      }
 
-      alert(`✅ Tarefa de teste criada: "${testTask.atividade}"\n\n` +
+      console.log('💾 handleForceSaveToSupabase - Salvando todas as tarefas via TaskContext');
+      
+      // Forçar salvamento de todas as tarefas atuais
+      await handleTasksUpdate(tasks);
+
+      alert(`✅ ${tasks.length} tarefas salvas com sucesso!\n\n` +
             `🔍 Verifique no Supabase Dashboard:\n` +
-            `• Tabela 'tasks' deve ter o novo registro\n` +
-            `• Console do navegador deve mostrar logs\n\n` +
-            `📍 Room: ${currentRoom || 'default'}`);
+            `• Tabela 'tasks' deve ter ${tasks.length} registros\n` +
+            `• Console do navegador mostra logs detalhados\n\n` +
+            `📍 Room: ${currentRoom || 'default'}\n` +
+            `👤 Usuário: ${auth.user?.email}`);
 
     } catch (error) {
-      console.error('Erro no teste Supabase:', error);
-      alert(`❌ Erro no teste: ${error.message}`);
+      console.error('❌ handleForceSaveToSupabase - Erro:', error);
+      alert(`❌ Erro no salvamento: ${error.message}\n\n` +
+            `🔍 Verifique no console do navegador para mais detalhes`);
     }
   };
 
@@ -674,11 +728,11 @@ function AppContent() {
               </Tooltip>
             )}
 
-            {/* Botão de teste Supabase */}
-            <Tooltip title="🧪 Testar Salvamento Supabase">
+            {/* Botão de salvar tarefas no Supabase */}
+            <Tooltip title="💾 Salvar todas as tarefas no Supabase">
               <IconButton 
                 color="inherit" 
-                onClick={handleTestSupabaseSave}
+                onClick={handleForceSaveToSupabase}
                 sx={{ 
                   bgcolor: 'rgba(76, 175, 80, 0.1)',
                   '&:hover': { bgcolor: 'rgba(76, 175, 80, 0.2)' }

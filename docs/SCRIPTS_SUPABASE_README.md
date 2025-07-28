@@ -19,6 +19,18 @@
 - **Quando usar**: Para configuração inicial ou consulta
 - **Contém**: Instruções detalhadas, credenciais, troubleshooting
 
+### 4️⃣ `SUPABASE_QUERIES_VERIFICACAO.sql` ⭐ **NOVO**
+**Uso**: Queries para verificar se dados estão sendo salvos
+- **Quando usar**: Para testar se TaskTracker está salvando no Supabase
+- **Contém**: 6 seções de queries de verificação e debug
+- **Resultado**: Confirmação de que dados estão sendo persistidos
+
+### 5️⃣ `COMO_VERIFICAR_DADOS_SUPABASE.md` ⭐ **NOVO**
+**Uso**: Guia completo de como verificar dados salvos
+- **Quando usar**: Para aprender a usar as queries de verificação
+- **Contém**: Passo-a-passo, exemplos práticos, troubleshooting
+- **Resultado**: Domínio total da verificação de dados
+
 ## 🚀 FLUXO DE INSTALAÇÃO RECOMENDADO
 
 ### Instalação Limpa (Recomendado)

@@ -98,6 +98,27 @@ const MigrationWizard = ({ open, onClose, onComplete }) => {
       setLoading(true);
       setError('');
       
+      console.log('🚀 MigrationWizard - INICIANDO migração');
+      console.log('   └─ Usuário autenticado:', auth?.isAuthenticated);
+      console.log('   └─ Email do usuário:', auth?.user?.email);
+      console.log('   └─ Salas para migrar:', localData.rooms.length);
+      console.log('   └─ Total de tarefas:', localData.totalTasks);
+      
+      // Verificar autenticação
+      if (!auth?.isAuthenticated) {
+        throw new Error('Usuário não autenticado. Faça login primeiro.');
+      }
+      
+      // INICIALIZAR SupabaseService antes de usar
+      console.log('🔧 MigrationWizard - Inicializando SupabaseService');
+      try {
+        await supabaseService.initialize();
+        console.log('✅ MigrationWizard - SupabaseService inicializado com sucesso');
+      } catch (initError) {
+        console.error('❌ MigrationWizard - Erro na inicialização:', initError);
+        throw new Error(`Falha na inicialização do SupabaseService: ${initError.message}`);
+      }
+      
       const results = {
         roomsCreated: 0,
         tasksMigrated: 0,
@@ -107,10 +128,13 @@ const MigrationWizard = ({ open, onClose, onComplete }) => {
       // Para cada sala local
       for (const roomCode of localData.rooms) {
         try {
+          console.log(`🏠 MigrationWizard - Processando sala: ${roomCode}`);
+          
           // Verificar se sala já existe no Supabase
           let room = await supabaseService.findRoomByCode(roomCode);
           
           if (!room) {
+            console.log(`   └─ Sala não existe, criando nova: ${roomCode}`);
             // Criar sala no Supabase
             room = await supabaseService.createRoom({
               name: `Sala ${roomCode}`,
@@ -118,13 +142,20 @@ const MigrationWizard = ({ open, onClose, onComplete }) => {
               is_public: false
             });
             results.roomsCreated++;
+            console.log(`   └─ ✅ Sala criada com ID: ${room.id}`);
+          } else {
+            console.log(`   └─ Sala já existe com ID: ${room.id}`);
           }
 
           // Migrar tarefas da sala
           const tasks = localData.tasksByRoom[roomCode];
+          console.log(`   └─ Migrando ${tasks.length} tarefas da sala ${roomCode}`);
           
-          for (const task of tasks) {
+          for (let i = 0; i < tasks.length; i++) {
+            const task = tasks[i];
             try {
+              console.log(`      └─ Tarefa ${i+1}/${tasks.length}: ${task.atividade}`);
+              
               // Adaptar formato para Supabase
               const supabaseTask = {
                 ...task,
@@ -139,9 +170,10 @@ const MigrationWizard = ({ open, onClose, onComplete }) => {
 
               await supabaseService.createTask(supabaseTask);
               results.tasksMigrated++;
+              console.log(`      └─ ✅ Tarefa migrada com sucesso`);
               
             } catch (taskError) {
-              console.error('Erro ao migrar tarefa:', taskError);
+              console.error(`      └─ ❌ Erro na tarefa: ${taskError.message}`);
               results.errors.push(`Tarefa "${task.atividade}": ${taskError.message}`);
             }
           }
@@ -152,10 +184,23 @@ const MigrationWizard = ({ open, onClose, onComplete }) => {
         }
       }
 
+      console.log('🎉 MigrationWizard - MIGRAÇÃO CONCLUÍDA');
+      console.log('   └─ Salas criadas:', results.roomsCreated);
+      console.log('   └─ Tarefas migradas:', results.tasksMigrated);
+      console.log('   └─ Total de erros:', results.errors.length);
+      
+      if (results.errors.length > 0) {
+        console.log('⚠️ MigrationWizard - ERROS ENCONTRADOS:');
+        results.errors.forEach((error, index) => {
+          console.log(`   ${index + 1}. ${error}`);
+        });
+      }
+
       setMigrationResults(results);
       setActiveStep(3); // Concluído
       
     } catch (error) {
+      console.error('❌ MigrationWizard - ERRO GERAL:', error);
       setError('Erro na migração: ' + error.message);
     } finally {
       setLoading(false);

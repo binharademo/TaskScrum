@@ -294,6 +294,64 @@ export class SupabaseService extends DataService {
     }
   }
 
+  async deleteRoom(roomId) {
+    if (!this.initialized) {
+      throw new Error('SupabaseService not initialized');
+    }
+    
+    try {
+      // Get current user
+      const { data: { user }, error: userError } = await this.supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Get room data before deleting for verification
+      const { data: room, error: roomError } = await this.supabase
+        .from('rooms')
+        .select('*')
+        .eq('id', roomId)
+        .single();
+
+      if (roomError) {
+        if (roomError.code === 'PGRST116') {
+          throw new Error('Room not found');
+        }
+        throw new Error(`Failed to get room: ${roomError.message}`);
+      }
+
+      // Check if user is the owner or has permission to delete
+      if (room.owner_id !== user.id) {
+        // Check if user has admin access to the room
+        const { data: access, error: accessError } = await this.supabase
+          .from('room_access')
+          .select('role')
+          .eq('room_id', roomId)
+          .eq('user_id', user.id)
+          .single();
+
+        if (accessError || !access || access.role !== 'admin') {
+          throw new Error('Insufficient permissions to delete room');
+        }
+      }
+
+      // Delete room (cascade will handle related records)
+      const { error: deleteError } = await this.supabase
+        .from('rooms')
+        .delete()
+        .eq('id', roomId);
+
+      if (deleteError) {
+        throw new Error(`Failed to delete room: ${deleteError.message}`);
+      }
+
+      this.emit('roomDeleted', { room });
+      return { success: true, deletedRoom: room };
+    } catch (error) {
+      throw new Error(`Failed to delete room: ${error.message}`);
+    }
+  }
+
   // ===============================================
   // TASK CRUD OPERATIONS
   // ===============================================
