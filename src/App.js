@@ -436,19 +436,36 @@ function AppContent() {
   };
 
   const handleClearTasks = async () => {
-    if (window.confirm('Tem certeza que deseja zerar todas as atividades? Esta ação não pode ser desfeita.')) {
-      console.log('🗑️ handleClearTasks - Zerando todas as tarefas');
-      console.log('   └─ Modo de persistência:', persistenceMode);
+    const roomInfo = currentRoom ? ` da sala "${currentRoom}"` : '';
+    const taskCount = tasks.length;
+    
+    console.log('🗑️ handleClearTasks - INÍCIO DO PROCESSO');
+    console.log('   └─ Sala atual:', currentRoom);
+    console.log('   └─ Número de tarefas:', taskCount);
+    console.log('   └─ Modo de persistência:', persistenceMode);
+    console.log('   └─ Array de tarefas:', tasks.slice(0, 3)); // Mostrar as primeiras 3
+    
+    if (window.confirm(`🗑️ ATENÇÃO: Zerar todas as ${taskCount} atividades${roomInfo}?\n\n⚠️ Esta ação remove APENAS as tarefas que você está vendo na interface atual.\n❌ Esta ação NÃO pode ser desfeita.\n\n✅ Clique OK para confirmar a remoção.`)) {
+      console.log('🗑️ handleClearTasks - Usuário confirmou a remoção');
+      console.log('   └─ Chamando bulkUpdate([])...');
       
       try {
         // Usar TaskContext para persistência automática
-        await bulkUpdate([]);
+        const result = await bulkUpdate([]);
+        console.log('✅ handleClearTasks - bulkUpdate concluído:', result);
+        
         setTasks([]);
+        console.log('✅ handleClearTasks - setTasks([]) chamado');
         
         console.log('✅ handleClearTasks - Tarefas zeradas com sucesso');
       } catch (error) {
         console.error('❌ handleClearTasks - Erro ao zerar:', error);
+        console.error('   └─ Error name:', error.name);
+        console.error('   └─ Error message:', error.message);
+        console.error('   └─ Error stack:', error.stack);
+        
         // Fallback para localStorage
+        console.log('🔄 handleClearTasks - Usando fallback localStorage');
         setTasks([]);
         saveTasksToStorage([]);
       }
@@ -469,8 +486,14 @@ function AppContent() {
   };
 
   const handleRoomSelected = (roomCode) => {
+    console.log('🏠 handleRoomSelected - Sala selecionada:', roomCode);
+    
+    // CRÍTICO: Definir sala atual no localStorage para TaskContext
+    setCurrentRoom(roomCode);
     setCurrentRoomState(roomCode);
     setRoomSelectorOpen(false);
+    
+    console.log('💾 handleRoomSelected - Sala salva no localStorage:', roomCode);
     
     // Carregar dados da nova sala
     const roomTasks = loadTasksFromStorage(roomCode);
@@ -625,6 +648,8 @@ function AppContent() {
     try {
       console.log('💾 handleForceSaveToSupabase - INÍCIO');
       console.log('   └─ Tarefas atuais:', tasks.length);
+      console.log('   └─ Sala atual (estado):', currentRoom);
+      console.log('   └─ Sala atual (localStorage):', getCurrentRoom());
       console.log('   └─ Modo Supabase ativo:', isSupabaseMode);
       console.log('   └─ Modo de persistência:', persistenceMode);
 
@@ -638,8 +663,20 @@ function AppContent() {
         return;
       }
 
+      const currentRoomFromStorage = getCurrentRoom();
+      if (!currentRoomFromStorage) {
+        alert('❌ Nenhuma sala selecionada!\n\n' +
+              '🏠 SOLUÇÃO:\n' +
+              '1. Clique no botão 🏠 (seletor de salas)\n' +
+              '2. Crie uma nova sala OU entre em uma existente\n' +
+              '3. Tente salvar novamente\n\n' +
+              '💾 O botão Salvar precisa saber em qual sala guardar os dados.');
+        return;
+      }
+
       if (tasks.length === 0) {
-        alert('ℹ️ Nenhuma tarefa para salvar. Crie algumas tarefas no board primeiro.');
+        alert(`ℹ️ Nenhuma tarefa para salvar na sala "${currentRoomFromStorage}".\n\n` +
+              'Crie algumas tarefas no Kanban primeiro.');
         return;
       }
 
@@ -652,7 +689,7 @@ function AppContent() {
             `🔍 Verifique no Supabase Dashboard:\n` +
             `• Tabela 'tasks' deve ter ${tasks.length} registros\n` +
             `• Console do navegador mostra logs detalhados\n\n` +
-            `📍 Room: ${currentRoom || 'default'}\n` +
+            `🏠 Sala: ${currentRoomFromStorage}\n` +
             `👤 Usuário: ${auth.user?.email}`);
 
     } catch (error) {

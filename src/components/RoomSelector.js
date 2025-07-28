@@ -179,23 +179,45 @@ const RoomSelector = ({ open, onRoomSelected, initialRoomCode = '' }) => {
         console.log('✅ createRoomHybrid - Sala criada com sucesso:', room);
         
         // Definir currentRoomId para poder criar tarefas
+        console.log('🎯 createRoomHybrid - DEFININDO room ID:', room.id);
         supabaseService.setCurrentRoom(room.id);
-        console.log('🎯 createRoomHybrid - Room ID definido:', room.id);
+        console.log('🎯 createRoomHybrid - Room ID definido no service:', supabaseService.currentRoomId);
+        
+        // Verificar se foi definido corretamente
+        if (!supabaseService.currentRoomId) {
+          console.error('❌ createRoomHybrid - ERRO: currentRoomId não foi definido!');
+          throw new Error('Failed to set current room ID');
+        }
         
         // Adicionar tarefas iniciais se fornecidas
         if (initialTasks.length > 0) {
           console.log(`📝 createRoomHybrid - ADICIONANDO ${initialTasks.length} tarefas iniciais`);
           for (const task of initialTasks) {
+            // Garantir que a tarefa tenha pelo menos atividade ou userStory
             const taskWithRoom = {
               ...task,
-              room_id: room.id
+              room_id: room.id,
+              // Se não tem atividade nem userStory, usar uma padrão
+              atividade: task.atividade || task.userStory || `Tarefa ${task.originalId || 'sem ID'}`,
+              userStory: task.userStory || task.atividade || `Story ${task.originalId || 'sem ID'}`
             };
             console.log('   └─ Criando tarefa:', task.atividade);
+            console.log('   └─ Dados da tarefa:', {
+              atividade: task.atividade,
+              epico: task.epico,
+              status: task.status,
+              room_id: taskWithRoom.room_id,
+              currentRoomId: supabaseService.currentRoomId
+            });
+            
             try {
               const createdTask = await supabaseService.createTask(taskWithRoom);
               console.log('     ✅ Tarefa criada:', createdTask.id);
             } catch (taskError) {
               console.error('     ❌ Erro ao criar tarefa:', taskError.message);
+              console.error('     ❌ Stack:', taskError.stack);
+              console.error('     ❌ Dados que causaram erro:', taskWithRoom);
+              console.error('     ❌ currentRoomId no service:', supabaseService.currentRoomId);
             }
           }
           console.log('✅ createRoomHybrid - Processo de criação de tarefas concluído');
