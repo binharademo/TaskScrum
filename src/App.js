@@ -47,6 +47,7 @@ import GoogleSheetsSimple from './components/GoogleSheetsSimple';
 import ProjectSharing from './components/ProjectSharing';
 import DemoModeInfo from './components/DemoModeInfo';
 import WelcomeWizard from './components/WelcomeWizard';
+import LoginScreen from './components/LoginScreen';
 import { loadTasksFromStorage, saveTasksToStorage, getCurrentRoom, setCurrentRoom } from './utils/storage';
 import { isFirstAccess, markWizardCompleted, getWizardResult, resetWizard } from './utils/firstAccess';
 import RoomSelector from './components/RoomSelector';
@@ -119,6 +120,9 @@ function AppContent() {
   // Estados para o wizard de primeiro acesso
   const [showWelcomeWizard, setShowWelcomeWizard] = useState(false);
   const [wizardResult, setWizardResult] = useState(null);
+  
+  // Estados para a tela de login tradicional
+  const [showLoginScreen, setShowLoginScreen] = useState(false);
 
   // Detectar primeiro acesso e mostrar wizard
   useEffect(() => {
@@ -155,6 +159,28 @@ function AppContent() {
   };
 
   // =============================================
+  // FUNÇÕES PARA TELA DE LOGIN TRADICIONAL
+  // =============================================
+  const handleLoginSuccess = (userData) => {
+    console.log('✅ handleLoginSuccess - Login realizado com sucesso:', userData);
+    setShowLoginScreen(false);
+    // Sistema já atualiza automaticamente com o contexto de auth
+  };
+
+  const handleSignUpSuccess = (userData) => {
+    console.log('✅ handleSignUpSuccess - Cadastro realizado com sucesso:', userData);
+    setShowLoginScreen(false);
+    // Sistema já atualiza automaticamente com o contexto de auth
+  };
+
+  const handleLoginCancel = () => {
+    console.log('❌ handleLoginCancel - Login cancelado pelo usuário');
+    setShowLoginScreen(false);
+    // Voltar para modo local se cancelar o login
+    alert('Continuando em modo local. Você pode fazer login a qualquer momento clicando no ícone 🔐 no cabeçalho.');
+  };
+
+  // =============================================
   // FUNÇÃO PARA FINALIZAR WIZARD DE PRIMEIRO ACESSO
   // =============================================
   const handleWizardComplete = async (result) => {
@@ -172,21 +198,14 @@ function AppContent() {
           
         case 'cloud':
           console.log('☁️ handleWizardComplete - Modo nuvem selecionado');
-          // Mostrar modal de autenticação se Supabase estiver configurado
-          if (isSupabaseConfigured()) {
-            console.log('🔐 handleWizardComplete - Direcionando para autenticação');
-            if (!auth?.isAuthenticated) {
-              // Simular clique no botão de login se usuário não estiver autenticado
-              setTimeout(() => {
-                console.log('⚡ handleWizardComplete - Abrindo fluxo de login');
-                handleTestLogin();
-              }, 500);
-            } else {
-              console.log('✅ handleWizardComplete - Usuário já autenticado:', auth.user?.email);
-            }
+          // Mostrar tela de login tradicional se usuário não estiver autenticado
+          if (!auth?.isAuthenticated) {
+            console.log('🔐 handleWizardComplete - Abrindo tela de login tradicional');
+            setTimeout(() => {
+              setShowLoginScreen(true);
+            }, 500);
           } else {
-            console.warn('⚠️ handleWizardComplete - Supabase não configurado');
-            alert('⚠️ Modo nuvem não disponível. Supabase não está configurado.\n\nUsando modo local temporariamente.');
+            console.log('✅ handleWizardComplete - Usuário já autenticado:', auth.user?.email);
           }
           break;
           
@@ -1146,6 +1165,14 @@ function AppContent() {
         <WelcomeWizard 
           open={showWelcomeWizard}
           onComplete={handleWizardComplete}
+        />
+
+        {/* Tela de Login Tradicional */}
+        <LoginScreen 
+          open={showLoginScreen}
+          onClose={handleLoginCancel}
+          onLoginSuccess={handleLoginSuccess}
+          onSignUpSuccess={handleSignUpSuccess}
         />
       </Box>
     </ThemeProvider>
