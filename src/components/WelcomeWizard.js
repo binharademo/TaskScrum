@@ -40,7 +40,11 @@ import {
   Share as ShareIcon,
   Settings as SettingsIcon,
   GetApp as ExportIcon,
-  ContentCopy as CopyIcon
+  ContentCopy as CopyIcon,
+  Google as GoogleIcon,
+  Download as DownloadIcon,
+  Delete as DeleteIcon,
+  Brightness4
 } from '@mui/icons-material';
 
 // Hooks e utilitários
@@ -60,7 +64,7 @@ const WelcomeWizard = ({ open, onComplete }) => {
   const steps = [
     'Boas-vindas',
     'Funcionalidades', 
-    'Interface do Sistema',
+    'Ícones da Barra Superior',
     'Modos de Trabalho',
     'Configuração Final'
   ];
@@ -219,7 +223,7 @@ const WelcomeWizard = ({ open, onComplete }) => {
             onClick={() => setCurrentStep(2)}
             endIcon={<NextIcon />}
           >
-            Próximo: Interface do Sistema
+            Próximo: Ícones da Barra Superior
           </Button>
         </Box>
       </Box>
@@ -233,110 +237,211 @@ const WelcomeWizard = ({ open, onComplete }) => {
     <Fade in timeout={800}>
       <Box sx={{ py: 3 }}>
         <Typography variant="h4" textAlign="center" gutterBottom color="primary" fontWeight="bold">
-          🎛️ Interface do Sistema
+          🧭 Ícones da Barra Superior
         </Typography>
         
         <Typography variant="h6" textAlign="center" color="text.secondary" sx={{ mb: 4 }}>
-          Conheça os menus e funcionalidades para navegar com facilidade
+          Conheça cada ícone do cabeçalho e suas funcionalidades
         </Typography>
 
-        <Grid container spacing={3}>
-          {/* Menu Principal */}
+        {/* Simulação visual da barra superior */}
+        <Box sx={{ 
+          mb: 4, 
+          p: 2, 
+          bgcolor: 'primary.main', 
+          borderRadius: 1,
+          color: 'white',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2
+        }}>
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            TaskTracker - Gestão de Tarefas
+          </Typography>
+          <SharedIcon />
+          <CopyIcon />
+          <GoogleIcon />
+          <Typography variant="caption">📝</Typography>
+          <Typography variant="caption">🔐</Typography>
+          <Typography variant="caption">📦</Typography>
+          <Typography variant="caption">🎯</Typography>
+          <Typography variant="caption">🧪</Typography>
+          <DownloadIcon />
+          <DeleteIcon />
+          <Brightness4 />
+        </Box>
+
+        <Grid container spacing={2}>
+          {/* Coluna 1 - Ícones de Navegação */}
           <Grid item xs={12} md={6}>
-            <Zoom in timeout={600}>
-              <Card sx={{ height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)' } }}>
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <MenuIcon sx={{ fontSize: 40, color: 'primary.main', mr: 2 }} />
-                    <Typography variant="h6" fontWeight="bold">
-                      Menu de Visualizações
-                    </Typography>
+            <Card sx={{ mb: 2 }}>
+              <CardContent sx={{ p: 2 }}>
+                <Typography variant="h6" gutterBottom color="primary" fontWeight="bold">
+                  🚀 Navegação e Salas
+                </Typography>
+                
+                <Box sx={{ mb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <SharedIcon sx={{ fontSize: 20, color: 'primary.main', mr: 2 }} />
+                    <Typography variant="body2" fontWeight="bold">Trocar de Sala</Typography>
                   </Box>
-                  
-                  <Box sx={{ mb: 3 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <ViewModuleIcon sx={{ fontSize: 20, color: 'success.main', mr: 1 }} />
-                      <Typography variant="body2" fontWeight="bold">Kanban:</Typography>
-                    </Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ ml: 3, mb: 2 }}>
-                      Visualização em quadros com colunas Backlog, Priorizado, Doing e Done. 
-                      Arraste tarefas entre colunas e organize por épicos.
-                    </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
+                    Abre o seletor para criar novas salas, entrar em salas existentes ou alternar entre projetos.
+                  </Typography>
+                </Box>
 
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <TableViewIcon sx={{ fontSize: 20, color: 'info.main', mr: 1 }} />
-                      <Typography variant="body2" fontWeight="bold">Tabela:</Typography>
-                    </Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ ml: 3, mb: 2 }}>
-                      Visão detalhada em tabela com estimativas, reestimativas por dia, 
-                      burndown chart e análises completas.
-                    </Typography>
-
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <AnalyticsIcon sx={{ fontSize: 20, color: 'warning.main', mr: 1 }} />
-                      <Typography variant="body2" fontWeight="bold">Análises:</Typography>
-                    </Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ ml: 3 }}>
-                      Abas com estatísticas, burndown charts e análises preditivas 
-                      baseadas no desempenho da equipe.
-                    </Typography>
+                <Box sx={{ mb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <CopyIcon sx={{ fontSize: 20, color: 'info.main', mr: 2 }} />
+                    <Typography variant="body2" fontWeight="bold">Copiar ID da Sala</Typography>
                   </Box>
-                </CardContent>
-              </Card>
-            </Zoom>
+                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
+                    Copia o código da sala atual para compartilhar com sua equipe. Clique e o ID é copiado automaticamente!
+                  </Typography>
+                </Box>
+
+                <Box sx={{ mb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <GoogleIcon sx={{ fontSize: 20, color: 'success.main', mr: 2 }} />
+                    <Typography variant="body2" fontWeight="bold">Google Sheets</Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
+                    Alterna entre modo local (navegador) e Google Sheets para exportar/sincronizar dados.
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
           </Grid>
 
-          {/* Funcionalidades do Cabeçalho */}
+          {/* Coluna 2 - Ícones de Autenticação */}
           <Grid item xs={12} md={6}>
-            <Zoom in timeout={800}>
-              <Card sx={{ height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)' } }}>
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <SettingsIcon sx={{ fontSize: 40, color: 'secondary.main', mr: 2 }} />
-                    <Typography variant="h6" fontWeight="bold">
-                      Funcionalidades do Cabeçalho
-                    </Typography>
+            <Card sx={{ mb: 2 }}>
+              <CardContent sx={{ p: 2 }}>
+                <Typography variant="h6" gutterBottom color="secondary" fontWeight="bold">
+                  🔐 Autenticação (quando configurado)
+                </Typography>
+                
+                <Box sx={{ mb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <Typography sx={{ fontSize: 20, mr: 2 }}>📝</Typography>
+                    <Typography variant="body2" fontWeight="bold">Cadastrar Usuário</Typography>
                   </Box>
-                  
-                  <Box sx={{ mb: 3 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <CopyIcon sx={{ fontSize: 20, color: 'primary.main', mr: 1 }} />
-                      <Typography variant="body2" fontWeight="bold">Copiar ID da Sala:</Typography>
-                    </Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ ml: 3, mb: 2 }}>
-                      Botão para copiar o código da sala atual e compartilhar 
-                      com sua equipe para acesso colaborativo.
-                    </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
+                    Criar nova conta no sistema quando Supabase está configurado.
+                  </Typography>
+                </Box>
 
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <ShareIcon sx={{ fontSize: 20, color: 'success.main', mr: 1 }} />
-                      <Typography variant="body2" fontWeight="bold">Seletor de Salas:</Typography>
-                    </Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ ml: 3, mb: 2 }}>
-                      Crie novas salas, entre em salas existentes ou 
-                      gerencie projetos diferentes em espaços separados.
-                    </Typography>
-
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <ExportIcon sx={{ fontSize: 20, color: 'info.main', mr: 1 }} />
-                      <Typography variant="body2" fontWeight="bold">Exportar Dados:</Typography>
-                    </Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ ml: 3 }}>
-                      Exporte seus dados para Excel, CSV ou integre 
-                      com Google Sheets para relatórios externos.
-                    </Typography>
+                <Box sx={{ mb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <Typography sx={{ fontSize: 20, mr: 2 }}>🔐</Typography>
+                    <Typography variant="body2" fontWeight="bold">Fazer Login</Typography>
                   </Box>
-                </CardContent>
-              </Card>
-            </Zoom>
+                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
+                    Entrar com usuário existente para sincronizar dados na nuvem.
+                  </Typography>
+                </Box>
+
+                <Box sx={{ mb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <Typography sx={{ fontSize: 20, mr: 2 }}>👤</Typography>
+                    <Typography variant="body2" fontWeight="bold">Usuário Logado</Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
+                    Mostra email do usuário logado. Clique para fazer logout.
+                  </Typography>
+                </Box>
+
+                <Box sx={{ mb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <Typography sx={{ fontSize: 20, mr: 2 }}>📦</Typography>
+                    <Typography variant="body2" fontWeight="bold">Migrar Dados</Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
+                    Migra dados do localStorage para Supabase quando logado.
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Coluna 3 - Ícones de Ferramentas */}
+          <Grid item xs={12} md={6}>
+            <Card sx={{ mb: 2 }}>
+              <CardContent sx={{ p: 2 }}>
+                <Typography variant="h6" gutterBottom color="warning.main" fontWeight="bold">
+                  🛠️ Ferramentas e Testes
+                </Typography>
+                
+                <Box sx={{ mb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <Typography sx={{ fontSize: 20, mr: 2 }}>🎯</Typography>
+                    <Typography variant="body2" fontWeight="bold">Testar Wizard</Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
+                    Abre o wizard de primeiro acesso para testar ou refazer configuração inicial.
+                  </Typography>
+                </Box>
+
+                <Box sx={{ mb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <Typography sx={{ fontSize: 20, mr: 2 }}>🧪</Typography>
+                    <Typography variant="body2" fontWeight="bold">Testes de Integração</Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
+                    Abre painel de testes para desenvolvedores verificarem funcionalidades.
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Coluna 4 - Ícones de Sistema */}
+          <Grid item xs={12} md={6}>
+            <Card sx={{ mb: 2 }}>
+              <CardContent sx={{ p: 2 }}>
+                <Typography variant="h6" gutterBottom color="error.main" fontWeight="bold">
+                  ⚙️ Sistema e Dados
+                </Typography>
+                
+                <Box sx={{ mb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <DownloadIcon sx={{ fontSize: 20, color: 'info.main', mr: 2 }} />
+                    <Typography variant="body2" fontWeight="bold">Download de Dados</Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
+                    Baixa todas as tarefas em formato JSON para backup ou análise externa.
+                  </Typography>
+                </Box>
+
+                <Box sx={{ mb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <DeleteIcon sx={{ fontSize: 20, color: 'error.main', mr: 2 }} />
+                    <Typography variant="body2" fontWeight="bold">Zerar Atividades</Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
+                    Remove todas as tarefas da sala atual. ⚠️ Ação irreversível!
+                  </Typography>
+                </Box>
+
+                <Box sx={{ mb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <Brightness4 sx={{ fontSize: 20, color: 'text.secondary', mr: 2 }} />
+                    <Typography variant="body2" fontWeight="bold">Modo Escuro</Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
+                    Alterna entre tema claro e escuro da interface.
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
           </Grid>
         </Grid>
 
-        <Alert severity="info" sx={{ mt: 4, mb: 3 }}>
+        <Alert severity="info" sx={{ mt: 3, mb: 3 }}>
           <Typography variant="body2">
             <TipIcon sx={{ fontSize: 16, mr: 1, verticalAlign: 'middle' }} />
-            <strong>Dica:</strong> Use os filtros avançados em cada visualização para 
-            encontrar rapidamente tarefas por desenvolvedor, sprint, prioridade ou busca textual!
+            <strong>Dica:</strong> Alguns ícones só aparecem em contextos específicos (usuário logado, Supabase configurado, etc.). 
+            Passe o mouse sobre qualquer ícone para ver uma explicação rápida!
           </Typography>
         </Alert>
 
