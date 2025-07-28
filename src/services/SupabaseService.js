@@ -157,6 +157,25 @@ export class SupabaseService extends DataService {
         throw new Error(`Failed to create room: ${error.message}`);
       }
 
+      // CRÍTICO: Criar acesso automático para o proprietário da sala
+      console.log('🔐 createRoom - Criando acesso automático para proprietário...');
+      const { error: accessError } = await this.supabase
+        .from('room_access')
+        .insert([{
+          room_id: data.id,
+          user_id: user.id,
+          role: 'admin',
+          granted_by: user.id
+        }]);
+
+      if (accessError) {
+        console.error('❌ createRoom - Erro ao criar acesso:', accessError);
+        // Não falhar completamente, mas logar o erro
+        console.warn('⚠️ createRoom - Sala criada mas sem acesso automático');
+      } else {
+        console.log('✅ createRoom - Acesso criado com sucesso para:', user.email);
+      }
+
       this.emit('roomCreated', { room: data });
       return data;
     } catch (error) {

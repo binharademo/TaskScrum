@@ -89,19 +89,39 @@ const RoomSelector = ({ open, onRoomSelected }) => {
   const getAvailableRoomsHybrid = async () => {
     if (isSupabaseMode && supabaseService) {
       try {
+        console.log('🏠 getAvailableRoomsHybrid - Carregando salas do Supabase...');
+        console.log('🔧 Service inicializado:', supabaseService.initialized);
+        console.log('👤 Usuário autenticado:', auth?.user?.email);
+        
+        // Garantir que o service está inicializado
+        if (!supabaseService.initialized) {
+          console.log('⚡ getAvailableRoomsHybrid - Inicializando service...');
+          await supabaseService.initialize();
+        }
+        
         const userRooms = await supabaseService.getUserRooms();
+        console.log('✅ getAvailableRoomsHybrid - Salas encontradas:', userRooms.length);
+        
+        userRooms.forEach((room, index) => {
+          console.log(`   ${index + 1}. "${room.name}" (${room.room_code}) - ID: ${room.id}`);
+        });
+        
         return userRooms.map(room => ({
           code: room.room_code,
           name: room.name,
           taskCount: room.task_count || 0
         }));
       } catch (error) {
-        console.error('Error loading Supabase rooms:', error);
+        console.error('❌ getAvailableRoomsHybrid - Erro ao carregar salas do Supabase:', error);
+        console.error('📋 Stack trace:', error.stack);
         return [];
       }
     } else {
       // Modo localStorage padrão
+      console.log('💾 getAvailableRoomsHybrid - Carregando salas do localStorage...');
       const rooms = getAvailableRooms();
+      console.log('✅ getAvailableRoomsHybrid - Salas localStorage:', rooms);
+      
       return rooms.map(roomCode => ({
         code: roomCode,
         name: roomCode,
@@ -254,6 +274,20 @@ const RoomSelector = ({ open, onRoomSelected }) => {
       };
       
       loadRooms();
+      
+      // Escutar evento de sala criada pelos testes de integração
+      const handleRoomCreated = (event) => {
+        console.log('🔄 RoomSelector - Evento roomCreated recebido:', event.detail);
+        console.log('📋 RoomSelector - Recarregando lista de salas...');
+        loadRooms();
+      };
+      
+      window.addEventListener('roomCreated', handleRoomCreated);
+      
+      // Cleanup
+      return () => {
+        window.removeEventListener('roomCreated', handleRoomCreated);
+      };
     }
   }, [open, isSupabaseMode]);
 

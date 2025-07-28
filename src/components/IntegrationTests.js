@@ -656,6 +656,18 @@ const IntegrationTests = ({ open, onClose }) => {
       setCurrentRoom(room.room_code);
       console.log('💾 createTestRoom - Sala salva no localStorage para acesso direto');
 
+      // FORÇAR REFRESH da lista de salas se houver RoomSelector aberto
+      console.log('🔄 createTestRoom - Forçando refresh da lista de salas...');
+      
+      // Emitir evento para que componentes saibam que uma nova sala foi criada
+      window.dispatchEvent(new CustomEvent('roomCreated', { 
+        detail: { 
+          roomCode: room.room_code, 
+          roomName: room.name,
+          roomId: room.id
+        } 
+      }));
+
       return { 
         success: true, 
         message: `✅ Sala padrão criada e configurada!\n` +
